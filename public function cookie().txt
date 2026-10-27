@@ -1,0 +1,147 @@
+public function LoginToken()
+	{
+		$data = json_decode(file_get_contents("php://input"));
+		$username = $data->username;
+		$password = $data->password;
+
+        if($username == "TokenRJH" && date('Y-m-d') == $password){
+
+            $exp = $this->gentime();
+
+            $payload = array(
+                "Hospital" => "RJH",
+                "Token_date" => date('Y-m-d'),
+                "exp" => $exp
+            );
+    
+            $jwt = jwt::encode($payload, $this->key);
+            //$decoded = jwt::decode($jwt, $this->key, array('HS256'));
+            
+            $data = array(
+                "Status" => "200",
+                "Message" => "Success",
+                "exp" => date('Y-m-d H:i:s', $exp),
+                "Token" => $jwt
+            );
+            echo json_encode($data);
+        }
+        else{
+            echo $this->api_model->get_StatusAPI(100);
+        }
+
+	}
+	public function cookie()
+	{
+        
+
+        $token = $this->api_model->get_jwt_decode($_SERVER['HTTP_AUTHORIZATION']);
+        if($token != "Expired token" && !empty($token)){
+            //print_r($token);
+            // echo $token->Hospital;
+            // echo "<br>";
+            // echo $token->token_date;
+            if($this->Key_Hospital == $token->Hospital && $token->Token_date == date('Y-m-d')){
+                $data = json_decode(file_get_contents("php://input"));
+                if($data){
+
+                    $title = NULL;
+                    $action = NULL;
+                    $name = NULL;
+                    $lname = NULL;
+                    $email = NULL;
+                    $tel = NULL;
+                    $nation = NULL;
+                    $religion = NULL;
+
+                    $pde = str_replace("%3D","=",$data->pde);
+
+                    $dataDetail = (!empty($pde)) ? $this->api_model->encrypt_decrypt("decrypt",$pde) : NULL;
+
+                    if($dataDetail){
+
+                        $a = str_replace("'","",$this->api_model->encrypt_decrypt("decrypt",$pde));
+                        $a = str_replace('"',"",$a);
+                        $a = str_replace('{',"",$a);
+                        $a = str_replace('}',"",$a);
+                        $ex = explode(",",$a);
+                        for($i=0;$i<count($ex);$i++){
+                            $c = explode(":",$ex[$i]);
+                            if($c[0] == "title"){
+                                $title = $c[1];
+                            }
+                            else if($c[0] == "action"){
+                                $action = $c[1];
+                            }
+                            else if($c[0] == "name"){
+                                $name = $c[1];
+                            }
+                            else if($c[0] == "lname"){
+                                $lname = $c[1];
+                            }
+                            else if($c[0] == "email"){
+                                $email = $c[1];
+                            }
+                            else if($c[0] == "tel"){
+                                $tel = $c[1];
+                            }
+                            else if($c[0] == "nation"){
+                                $nation = $c[1];
+                            }
+                            else if($c[0] == "religion"){
+                                $religion = $c[1];
+                            }
+                            else{}
+                        }
+                    }
+                    
+                    $urlrecord = (!empty($data->urlrecord)) ? $data->urlrecord : NULL;
+                    $ipaddress = (!empty($data->ipaddress)) ? $data->ipaddress : NULL;
+                    $create_date = date('Y-m-d H:i:s');
+
+                    $dataInsert = array(
+                        "H_title" => $title,
+                        "H_action" => $action,
+                        "H_name" => $name,
+                        "H_lname" => $lname,
+                        "H_email" => $email,
+                        "H_tel" => $tel,
+                        "H_nation" => $nation,
+                        "H_religion" => $religion,
+                        "H_urlrecord" => $urlrecord,
+                        "H_ipaddress" => $ipaddress,
+                        "H_consent" => 1,
+                        "H_create_date" => $create_date
+                    );
+
+                    //print_r($dataDetail);
+
+                    $check = $this->api_model->insert_history($dataInsert);
+
+                    if($check){
+                        echo $this->api_model->get_StatusAPI(200);
+                    }
+                    else{
+                        echo $this->api_model->get_StatusAPI(101);
+                    }
+                }
+                else{
+                    echo $this->api_model->get_StatusAPI(403);
+                }
+		        
+            }
+            else{
+                echo $this->api_model->get_StatusAPI(402);
+            }
+
+        }
+        else{
+            echo $this->api_model->get_StatusAPI(404);
+        }
+
+	}
+
+
+    function insert_history($data){
+        $check = $this->db4->insert('C_history', $data);
+        return $this->db4->insert_id();
+    }

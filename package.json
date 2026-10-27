@@ -1,0 +1,26 @@
+{
+  "name": "web-consent-cookie",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PDPA/GDPR cookie consent widget + consent log API (Node.js, TypeScript, SQL Server)",
+  "type": "module",
+  "workspaces": [
+    "packages/widget",
+    "apps/server"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "npm run build -w @consent/widget && npm run build -w @consent/server",
+    "typecheck": "npm run typecheck -w @consent/widget && npm run typecheck -w @consent/server",
+    "test": "npm run test -w @consent/widget && npm run test -w @consent/server",
+    "dev": "npm run build -w @consent/widget && npm run dev -w @consent/server",
+    "migrate": "npm run migrate -w @consent/server"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

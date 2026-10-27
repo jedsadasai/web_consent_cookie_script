@@ -1,0 +1,74 @@
+# Production:  docker compose up -d app            (DB_* points at your SQL Server 2016)
+#              docker compose run --rm migrate      (once per release, privileged login)
+# Local dev:   docker compose --profile dev up -d --build   (adds SQL Server + runs migrations)
+name: consent-cookie
+
+x-hardening: &hardening
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  app:
+    <<: *hardening
+    build: .
+    image: consent-cookie:latest
+    env_file: .env
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+        required: false
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  migrate:
+    <<: *hardening
+    image: consent-cookie:latest
+    build: .
+    profiles: [dev, migrate]
+    command: ["node", "apps/server/dist/db/migrate.js"]
+    env_file: .env
+    restart: "no"
+    depends_on:
+      mssql:
+        condition: service_healthy
+        required: false
+
+  # Dev only. Microsoft ships no SQL Server 2016 Linux image; the schema targets
+  # compatibility level 130 (2016), which migrate sets via MIGRATE_COMPAT_LEVEL.
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    profiles: [dev]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    ports:
+      # Host port for SSMS/sqlcmd; containers use mssql:1433 on the internal network.
+      - "127.0.0.1:${MSSQL_HOST_PORT:-14333}:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  mssql-data:

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Cookie Consent Demo</title>
+<style nonce="__NONCE__">
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --fg: #0f172a; --muted: #475569; --line: rgba(15,23,42,.08);
+    --ok: #047857; --ok-bg: #d1fae5; --off: #64748b; --off-bg: #e2e8f0; --accent: #0f766e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #020617; --card: #0b1220; --fg: #e5e7eb; --muted: #9ca3af; --line: rgba(148,163,184,.14);
+            --ok: #6ee7b7; --ok-bg: rgba(16,185,129,.15); --off: #94a3b8; --off-bg: rgba(148,163,184,.12); --accent: #5eead4; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.6 "Noto Sans Thai", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 48px 16px 200px; }
+  h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.2; margin: 0 0 8px; letter-spacing: -.02em; }
+  .lead { color: var(--muted); margin: 0 0 32px; max-width: 640px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  ul.status { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  ul.status li { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .tag { font-size: 12.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--off-bg); color: var(--off); }
+  .tag.on { background: var(--ok-bg); color: var(--ok); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  button { font: inherit; font-weight: 600; font-size: 14px; padding: 10px 16px; min-height: 44px; border-radius: 12px;
+           border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: transparent; color: #fff; }
+  @media (prefers-color-scheme: dark) { button.primary { color: #042f2e; } }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  pre { margin: 0; max-height: 220px; overflow: auto; font-size: 12.5px; background: var(--bg);
+        border-radius: 12px; padding: 12px; border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
+  iframe { width: 100%; height: 140px; border: 0; border-radius: 12px; background: var(--off-bg); }
+  code { font-size: 13px; }
+  #policy { margin-top: 32px; }
+  .flush { margin: 0; }
+</style>
+<!-- Load early (no defer) when using Google Consent Mode so the default "denied" is set first. -->
+<script src="/consent.js" nonce="__NONCE__"
+        data-site="demo"
+        data-policy-url="/demo#policy"
+        data-policy-version="2026-10"
+        data-google-consent-mode="true"></script>
+</head>
+<body>
+<main>
+  <h1>Cookie Consent Demo</h1>
+  <p class="lead">ตัวอย่างการทำงานของแบนเนอร์ขอความยินยอมคุกกี้ (PDPA) — scripts and iframes below run only after the matching
+    category is granted. This page uses a strict nonce-based CSP.</p>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="h-state">
+      <h2 id="h-state">Consent state</h2>
+      <ul class="status">
+        <li>necessary <span class="tag" data-cat="necessary">–</span></li>
+        <li>preferences <span class="tag" data-cat="preferences">–</span></li>
+        <li>analytics <span class="tag" data-cat="analytics">–</span></li>
+        <li>marketing <span class="tag" data-cat="marketing">–</span></li>
+      </ul>
+      <div class="actions">
+        <button type="button" class="primary" id="open">Cookie settings</button>
+        <button type="button" id="reset">Withdraw consent</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-scripts">
+      <h2 id="h-scripts">Gated scripts</h2>
+      <ul class="status">
+        <li>analytics.js <span class="tag" id="s-analytics">blocked</span></li>
+        <li>marketing.js <span class="tag" id="s-marketing">blocked</span></li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="h-frame">
+      <h2 id="h-frame">Gated iframe (marketing)</h2>
+      <iframe title="Marketing embed" data-consent="marketing" data-src="/demo/frame"></iframe>
+    </section>
+
+    <section class="card" aria-labelledby="h-dl">
+      <h2 id="h-dl">Google Consent Mode (dataLayer)</h2>
+      <pre id="datalayer">[]</pre>
+    </section>
+  </div>
+
+  <section class="card" id="policy" aria-labelledby="h-policy">
+    <h2 id="h-policy">Cookie policy (sample)</h2>
+    <p class="lead flush">Link your real policy with <code>data-policy-url</code> and bump
+      <code>data-policy-version</code> whenever it changes — visitors are asked again.</p>
+  </section>
+</main>
+
+<!-- Inert until consent: type="text/plain" + data-consent -->
+<script type="text/plain" data-consent="analytics" nonce="__NONCE__">
+  var el = document.getElementById('s-analytics'); el.textContent = 'running'; el.classList.add('on');
+</script>
+<script type="text/plain" data-consent="marketing" nonce="__NONCE__">
+  var el2 = document.getElementById('s-marketing'); el2.textContent = 'running'; el2.classList.add('on');
+</script>
+
+<script nonce="__NONCE__">
+  (function () {
+    function paint(cats) {
+      document.querySelectorAll('[data-cat]').forEach(function (el) {
+        var on = !!(cats && cats[el.getAttribute('data-cat')]);
+        el.textContent = cats ? (on ? 'granted' : 'denied') : 'not set';
+        el.classList.toggle('on', on);
+      });
+      var dl = (window.dataLayer || []).map(function (a) { return Array.prototype.slice.call(a); });
+      document.getElementById('datalayer').textContent = JSON.stringify(dl, null, 2);
+    }
+    paint(window.CookieConsent && window.CookieConsent.get());
+    window.addEventListener('cookieconsent:change', function (e) { paint(e.detail.categories); });
+    document.getElementById('open').addEventListener('click', function () { window.CookieConsent.open(); });
+    document.getElementById('reset').addEventListener('click', function () { window.CookieConsent.reset(); });
+  })();
+</script>
+</body>
+</html>
