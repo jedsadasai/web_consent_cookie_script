@@ -37,6 +37,10 @@ const result = await build({
 });
 
 const code = result.outputFiles[0].contents;
+
+// The server swaps this literal for POLICY_URL; fail the build if minification changed its form.
+const slots = Buffer.from(code).toString('utf8').split('"__CC_DEFAULT_POLICY_URL__"').length - 1;
+if (slots !== 1) throw new Error(`expected one "__CC_DEFAULT_POLICY_URL__" literal in the bundle, found ${slots}`);
 const hash = createHash('sha256').update(code).digest('hex').slice(0, 16);
 const integrity = `sha384-${createHash('sha384').update(code).digest('base64')}`;
 

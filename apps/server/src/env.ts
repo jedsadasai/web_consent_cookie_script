@@ -9,6 +9,14 @@ const bool = (fallback: boolean) =>
 
 const fromRoot = (p: string) => fileURLToPath(new URL(`../../../${p}`, import.meta.url));
 
+const safeProtocol = (v: string) => {
+  try {
+    return new URL(v).protocol;
+  } catch {
+    return '';
+  }
+};
+
 export const dbEnvSchema = z.object({
   DB_SERVER: z.string().min(1),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(1433),
@@ -34,6 +42,12 @@ const envSchema = dbEnvSchema.extend({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   HSTS: bool(true),
   ENABLE_DEMO: bool(false),
+  /** Default cookie-policy link baked into the served widget; pages can override it. */
+  POLICY_URL: z
+    .string()
+    .optional()
+    .transform((v) => (v?.trim() ? v.trim() : undefined))
+    .refine((v) => v === undefined || /^https?:$/.test(safeProtocol(v)), 'POLICY_URL must be an http(s) URL'),
   WIDGET_DIR: z.string().default(fromRoot('packages/widget/dist')),
   DEMO_DIR: z.string().default(fromRoot('demo')),
 });

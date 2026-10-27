@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { makeApp } from './helpers.js';
+import { loadEnv } from '../src/env.js';
+import { makeApp, widgetFixture } from './helpers.js';
 
 let app: FastifyInstance | undefined;
 afterEach(async () => {
@@ -38,6 +40,24 @@ describe('security headers', () => {
   });
 });
 
+describe('POLICY_URL env', () => {
+  const base = {
+    DB_SERVER: 'db',
+    DB_NAME: 'ConsentDB',
+    DB_USER: 'u',
+    DB_PASSWORD: 'p',
+    SITES: `a=https://a.example`,
+    IP_HASH_SECRET: 'x'.repeat(32),
+  };
+
+  it('accepts http(s), treats empty as unset and rejects other schemes', () => {
+    expect(loadEnv({ ...base, POLICY_URL: 'https://a.example/policy' }).POLICY_URL).toBe('https://a.example/policy');
+    expect(loadEnv({ ...base, POLICY_URL: '' }).POLICY_URL).toBeUndefined();
+    expect(loadEnv(base).POLICY_URL).toBeUndefined();
+    expect(() => loadEnv({ ...base, POLICY_URL: 'javascript:alert(1)' })).toThrow(/POLICY_URL/);
+  });
+});
+
 describe('widget delivery', () => {
   it('serves consent.js cross-origin with caching and ETag', async () => {
     ({ app } = await makeApp());
@@ -61,5 +81,35 @@ describe('widget delivery', () => {
 
     const manifest = (await app.inject('/consent.manifest.json')).json();
     expect(manifest).toMatchObject({ integrity: 'sha384-test', url: '/v/abc123def4567890/consent.js' });
+  });
+
+  const slotted = 'var u="__CC_DEFAULT_POLICY_URL__";';
+
+  it('injects POLICY_URL into the bundle and recomputes hash and integrity', async () => {
+    ({ app } = await makeApp({
+      widgetDir: widgetFixture(slotted),
+      policyUrl: 'https://www.rajthanee.com/policy/privacy-policy-cookie',
+    }));
+    const res = await app.inject('/consent.js');
+    expect(res.body).toBe('var u="https://www.rajthanee.com/policy/privacy-policy-cookie";');
+
+    const manifest = (await app.inject('/consent.manifest.json')).json() as { hash: string; integrity: string; url: string };
+    expect(manifest.integrity).toBe(`sha384-${createHash('sha384').update(res.rawPayload).digest('base64')}`);
+    expect(manifest.hash).not.toBe('abc123def4567890');
+    expect(res.headers.etag).toBe(`"${manifest.hash}"`);
+    expect((await app.inject(manifest.url)).statusCode).toBe(200);
+    expect((await app.inject('/v/abc123def4567890/consent.js')).statusCode).toBe(404);
+  });
+
+  it('percent-encodes non-ASCII policy URLs', async () => {
+    ({ app } = await makeApp({ widgetDir: widgetFixture(slotted), policyUrl: 'https://www.rajthanee.com/th/นโยบาย' }));
+    const res = await app.inject('/consent.js');
+    expect(res.body).toMatch(/^var u="https:\/\/www\.rajthanee\.com\/th\/%E0%B8%[0-9A-F%]+";$/);
+  });
+
+  it('serves the bundle unchanged without POLICY_URL', async () => {
+    ({ app } = await makeApp({ widgetDir: widgetFixture(slotted) }));
+    expect((await app.inject('/consent.js')).body).toBe(slotted);
+    expect((await app.inject('/consent.manifest.json')).json()).toMatchObject({ integrity: 'sha384-test' });
   });
 });

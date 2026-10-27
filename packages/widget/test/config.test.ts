@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveConfig, safeHttpUrl } from '../src/config';
+import { defaultPolicyUrl } from '../src/defaults';
 import { getTexts } from '../src/i18n';
 
 function scriptWith(data: Record<string, string>, src = 'https://consent.example.com/consent.js'): HTMLScriptElement {
@@ -51,6 +52,20 @@ describe('resolveConfig', () => {
     expect(cfg.subjectId).toBeNull();
     expect(cfg.acceptDays).toBe(365);
     expect(cfg.cookieDomain).toBeNull();
+  });
+
+  it('falls back to the host policy URL unless the page sets one', () => {
+    const host = { policyUrl: 'https://www.rajthanee.com/policy/privacy-policy-cookie' };
+    expect(resolveConfig(scriptWith({}), undefined, host).policyUrl).toBe(host.policyUrl);
+    expect(resolveConfig(scriptWith({ 'policy-url': 'https://a.example/p' }), undefined, host).policyUrl).toBe(
+      'https://a.example/p',
+    );
+    expect(resolveConfig(scriptWith({}), undefined, { policyUrl: 'javascript:alert(1)' }).policyUrl).toBeNull();
+    expect(resolveConfig(scriptWith({})).policyUrl).toBeNull();
+  });
+
+  it('ignores the unfilled host policy-URL slot', () => {
+    expect(defaultPolicyUrl()).toBeUndefined();
   });
 
   it('lets window config override attributes', () => {

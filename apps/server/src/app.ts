@@ -17,6 +17,8 @@ export interface AppConfig {
   enableDemo: boolean;
   widgetDir: string;
   demoDir: string;
+  /** Default cookie-policy URL injected into the served widget. */
+  policyUrl?: string;
   logger?: FastifyServerOptions['logger'];
 }
 
@@ -66,7 +68,7 @@ export async function buildApp(cfg: AppConfig, repo: ConsentRepository): Promise
 
   app.setNotFoundHandler((_req, reply) => reply.code(404).send(errorBody('NOT_FOUND', 'Not found')));
 
-  const asset = await loadWidget(cfg.widgetDir);
+  const asset = await loadWidget(cfg.widgetDir, { policyUrl: cfg.policyUrl });
   if (!asset) app.log.warn({ dir: cfg.widgetDir }, 'widget bundle not found — run `npm run build`');
 
   await app.register(healthRoutes, { repo });

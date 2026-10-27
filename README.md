@@ -38,12 +38,13 @@ Replace the old `#popupAlert` + `cookiealertT.js` + `cookiealert.css` with:
 ```html
 <script src="https://consent.example.com/consent.js"
         data-site="rjh"
-        data-policy-url="https://www.rajthanee.com/th/นโยบายคุกกี้"
         data-policy-version="2026-10"
         defer></script>
 ```
 
-With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.json`:
+The cookie-policy link (opens in a new tab) comes from the server's `POLICY_URL`; add `data-policy-url` only to override it on a page.
+
+With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.json`. The server bakes `POLICY_URL` into the served script, so they change whenever `POLICY_URL` does:
 
 ```html
 <script src="https://consent.example.com/v/<hash>/consent.js"
@@ -55,7 +56,7 @@ With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.j
 | attribute | config key | default | description |
 |---|---|---|---|
 | `data-site` | `siteKey` | `default` | Must match a key in `SITES` on the server |
-| `data-policy-url` | `policyUrl` | – | Link to the cookie policy (http/https only) |
+| `data-policy-url` | `policyUrl` | server `POLICY_URL` | Link to the cookie policy, opened in a new tab (http/https only) |
 | `data-policy-version` | `policyVersion` | `1` | Change this when the policy changes, so visitors are asked again |
 | `data-lang` | `language` | auto | `th` / `en` / `auto` |
 | `data-categories` | `categories` | all | e.g. `analytics,marketing` |
@@ -126,6 +127,7 @@ npm run dev   # uses ../../.env
    - `HSTS=true`
    - `TRUST_PROXY=1` (or the proxy IP)
    - `SITES=rjh=https://www.rajthanee.com,https://rajthanee.com`
+   - `POLICY_URL=https://www.rajthanee.com/policy/privacy-policy-cookie`
    - `DB_*` pointing at the real server
    - `DB_TRUST_SERVER_CERT=false` (install a trusted certificate on SQL Server)
    - Leave out `MIGRATE_CREATE_DB`, `MIGRATE_APP_LOGIN` and `MSSQL_SA_PASSWORD`.

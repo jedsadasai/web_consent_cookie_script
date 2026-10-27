@@ -1,6 +1,7 @@
 import { currentPageUrl, sendConsent } from './api';
 import { resolveConfig, type UserConfig } from './config';
 import { consentModeDefault, consentModeUpdate } from './consent-mode';
+import { defaultPolicyUrl } from './defaults';
 import { activateGated } from './gating';
 import { clearConsent, deleteCookie, readConsent, writeConsent } from './storage';
 import type { Categories, CategoryKey, ConsentAction, StoredConsent } from './types';
@@ -43,7 +44,7 @@ declare global {
   const script =
     (document.currentScript as HTMLScriptElement | null) ??
     document.querySelector<HTMLScriptElement>('script[data-cookie-consent]');
-  const cfg = resolveConfig(script, window.CookieConsentConfig);
+  const cfg = resolveConfig(script, window.CookieConsentConfig, { policyUrl: defaultPolicyUrl() });
 
   for (const name of cfg.legacyCookies) deleteCookie(name, cfg.cookieDomain);
 

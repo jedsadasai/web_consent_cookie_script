@@ -23,9 +23,9 @@ export class MemoryRepository implements ConsentRepository {
   async close() {}
 }
 
-export function widgetFixture(): string {
+export function widgetFixture(body = 'console.log("widget")'): string {
   const dir = mkdtempSync(join(tmpdir(), 'widget-'));
-  writeFileSync(join(dir, 'consent.min.js'), 'console.log("widget")');
+  writeFileSync(join(dir, 'consent.min.js'), body);
   writeFileSync(
     join(dir, 'consent.manifest.json'),
     JSON.stringify({ version: '1.0.0', hash: 'abc123def4567890', integrity: 'sha384-test' }),

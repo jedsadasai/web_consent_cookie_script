@@ -124,11 +124,20 @@ export function readScriptAttributes(script: HTMLScriptElement | null): Record<s
   return raw;
 }
 
+/** Defaults supplied by the serving host, used when the page does not set the option. */
+export interface HostDefaults {
+  policyUrl?: string;
+}
+
 /**
  * Merge `data-*` attributes with `window.CookieConsentConfig` (the JS object
  * wins) and validate every field; invalid values fall back to safe defaults.
  */
-export function resolveConfig(script: HTMLScriptElement | null, globalConfig?: UserConfig): Config {
+export function resolveConfig(
+  script: HTMLScriptElement | null,
+  globalConfig?: UserConfig,
+  defaults: HostDefaults = {},
+): Config {
   const raw: Record<string, unknown> = {
     ...readScriptAttributes(script),
     ...(globalConfig && typeof globalConfig === 'object' ? globalConfig : {}),
@@ -146,7 +155,7 @@ export function resolveConfig(script: HTMLScriptElement | null, globalConfig?: U
   return {
     siteKey: matches(raw.siteKey, SITE_KEY_RE) ?? 'default',
     apiUrl: raw.apiUrl !== undefined ? safeHttpUrl(raw.apiUrl, scriptSrc) : apiDefault,
-    policyUrl: safeHttpUrl(raw.policyUrl),
+    policyUrl: safeHttpUrl(raw.policyUrl ?? defaults.policyUrl),
     policyVersion: matches(raw.policyVersion, VERSION_RE) ?? '1',
     language: detectLanguage(raw.language),
     subjectId: matches(raw.subjectId, SUBJECT_ID_RE),

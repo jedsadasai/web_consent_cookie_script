@@ -20,6 +20,7 @@ async function main(): Promise<void> {
       enableDemo: env.ENABLE_DEMO,
       widgetDir: env.WIDGET_DIR,
       demoDir: env.DEMO_DIR,
+      policyUrl: env.POLICY_URL,
       logger: {
         level: env.LOG_LEVEL,
         // Never log personal data or credentials.

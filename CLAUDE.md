@@ -74,6 +74,7 @@ docker compose up -d app                     # production: app only, DB_* points
   - `/consent.js` is cached for 1h with an ETag.
   - `/v/:hash/consent.js` is immutable.
   - `/consent.manifest.json` is also served.
+  - `POLICY_URL` (env) is injected at load into the bundle's `"__CC_DEFAULT_POLICY_URL__"` literal (`src/defaults.ts` in the widget), and hash/integrity/ETag are recomputed. `build.mjs` fails if that literal is missing. Page-level `policyUrl` still wins.
 - **Demo and headers.** `routes/demo.ts` serves `demo/*.html` only when `ENABLE_DEMO=true`, replacing `__NONCE__` with a per-request nonce under a strict CSP. Everything else gets Helmet with `default-src 'none'`. Errors are returned as `{error:{code,message}}` without stack traces.
 - **Migrations.**
   - `db/migrate.ts` applies `migrations/NNN_*.sql` in order. Each file is split on `GO` lines, run in a transaction and tracked in `dbo.SchemaMigrations`.
