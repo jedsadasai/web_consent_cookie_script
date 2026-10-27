@@ -1,6 +1,7 @@
 # Production:  docker compose up -d app            (DB_* points at your SQL Server 2016)
 #              docker compose run --rm migrate      (once per release, privileged login)
 # Local dev:   docker compose --profile dev up -d --build   (adds SQL Server + runs migrations)
+# External DB: never pass --profile dev; that profile starts the local mssql container.
 name: consent-cookie
 
 x-hardening: &hardening

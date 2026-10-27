@@ -44,6 +44,36 @@ describe('SiteRegistry', () => {
     expect(() => SiteRegistry.parse('a=https://a.example/path')).toThrow();
     expect(() => SiteRegistry.parse('a=ftp://a.example')).toThrow();
   });
+
+  it('matches wildcard subdomains on the same scheme and port only', () => {
+    const r = SiteRegistry.parse('rjh=https://rajthanee.com,https://*.RajThanee.com;dev=http://*.rajthanee.test:8080');
+    expect(r.allows('rjh', 'https://www.rajthanee.com')).toBe(true);
+    expect(r.allows('rjh', 'https://a.b.rajthanee.com')).toBe(true);
+    expect(r.allows('rjh', 'https://rajthanee.com')).toBe(true); // listed explicitly
+    expect(r.allows('rjh', 'http://www.rajthanee.com')).toBe(false);
+    expect(r.allows('rjh', 'https://www.rajthanee.com:8443')).toBe(false);
+    expect(r.allows('rjh', 'https://evilrajthanee.com')).toBe(false);
+    expect(r.allows('rjh', 'https://www.rajthanee.com.evil.example')).toBe(false);
+    expect(r.allows('rjh', 'https://www.rajthanee.com/')).toBe(false); // not a serialised origin
+    expect(r.allows('dev', 'http://app.rajthanee.test:8080')).toBe(true);
+    expect(r.allows('dev', 'https://www.rajthanee.com')).toBe(false);
+    expect(r.isKnownOrigin('https://x.rajthanee.com')).toBe(true);
+    expect(r.isKnownOrigin('https://x.example.com')).toBe(false);
+  });
+
+  it('does not let a wildcard match its apex domain', () => {
+    const r = SiteRegistry.parse('rjh=https://*.rajthanee.com');
+    expect(r.allows('rjh', 'https://rajthanee.com')).toBe(false);
+  });
+
+  it('rejects malformed wildcards', () => {
+    expect(() => SiteRegistry.parse('a=https://*.com')).toThrow();
+    expect(() => SiteRegistry.parse('a=https://*')).toThrow();
+    expect(() => SiteRegistry.parse('a=https://www.*.example.com')).toThrow();
+    expect(() => SiteRegistry.parse('a=https://*.*.example.com')).toThrow();
+    expect(() => SiteRegistry.parse('a=https://*.10.0.0.1')).toThrow();
+    expect(() => SiteRegistry.parse('a=https://*.example.com/path')).toThrow();
+  });
 });
 
 describe('parseTrustProxy', () => {

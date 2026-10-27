@@ -64,7 +64,7 @@ docker compose up -d app                     # production: app only, DB_* points
 - **Startup.** `src/index.ts` loads env via `env.ts` (zod, fails fast), builds the mssql repository and calls `buildApp(cfg, repo)` in `app.ts`. `buildApp` takes an injected `ConsentRepository` (`domain.ts`). Tests use the in-memory `MemoryRepository` and `makeApp()` from `test/helpers.ts` with `fastify.inject`, so no DB is needed.
 - **Route scopes.** `routes/consent.ts` is registered under the `/api/v1` prefix. CORS and the rate limit are registered **inside that encapsulated scope only**, not globally.
 - **`POST /consent`:**
-  - Checks the request `Origin` against `SITES`. The format is `key=origin,origin;key2=…`, parsed by `lib/sites.ts`. This check runs in our own code, not only via CORS.
+  - Checks the request `Origin` against `SITES`. The format is `key=origin,origin;key2=…`, parsed by `lib/sites.ts`. An origin may be `https://*.example.com`, which matches any subdomain (not the apex) on the same scheme and port. This check runs in our own code, not only via CORS.
   - Then validates the body against a strict zod schema with a 4 KB limit.
   - Strips `pageUrl` down to origin + path.
   - Derives the IP from `req.ip`, which honours `TRUST_PROXY`, then stores it truncated (v4 /24, v6 /48) plus an HMAC with `IP_HASH_SECRET` (`lib/ip.ts`).
