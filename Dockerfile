@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Pinned by digest for reproducible, tamper-evident builds. Refresh with:
-#   docker pull node:22-alpine && docker inspect --format '{{index .RepoDigests 0}}' node:22-alpine
-ARG NODE_IMAGE=node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
+#   docker buildx imagetools inspect node:24.22.1-alpine   (use the top-level index "Digest")
+ARG NODE_IMAGE=node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
 
 # ---------- build: install all deps, typecheck, test, bundle ----------
 FROM ${NODE_IMAGE} AS build

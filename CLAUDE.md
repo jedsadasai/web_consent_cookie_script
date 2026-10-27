@@ -6,7 +6,7 @@ PDPA/GDPR cookie-consent system: a one-tag browser widget (`packages/widget`), a
 
 ## Commands
 
-npm workspaces (`@consent/widget`, `@consent/server`), Node ≥ 20.11. Run these from the repo root:
+npm workspaces (`@consent/widget`, `@consent/server`), Node ≥ 24.22.1 (`.nvmrc`). Run these from the repo root:
 
 ```bash
 npm ci
@@ -86,5 +86,5 @@ docker compose up -d app                     # production: app only, DB_* points
 - **No raw PII.** The legacy system stored decrypted patient data (`pde`). The new one accepts only an opaque `subjectId`, for example an HMAC of the HN. Don't add fields that carry names, emails, phones or full URLs with query strings.
 - **No client secrets.** The old date-as-password `LoginToken` JWT was removed deliberately. API protection is the origin allowlist, rate limit, body limit, strict schema and idempotency, so don't reintroduce a browser-held token.
 - **The API DB login only has INSERT/SELECT** on `dbo.ConsentRecord`. Schema changes belong in migrations run with the separate `MIGRATE_DB_USER`.
-- **Container hardening.** The runtime image is `node:22-alpine` pinned by digest, runs as non-root `node` and has npm removed. Compose runs it with `read_only`, `cap_drop: ALL` and `no-new-privileges`. Keep runtime writes to `/tmp` (tmpfs).
+- **Container hardening.** The runtime image is `node:24.22.1-alpine` pinned by digest, runs as non-root `node` and has npm removed. Compose runs it with `read_only`, `cap_drop: ALL` and `no-new-privileges`. Keep runtime writes to `/tmp` (tmpfs).
 - **`.env` holds real local secrets.** Never print its values. `.env.example` documents every variable.

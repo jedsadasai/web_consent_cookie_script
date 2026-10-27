@@ -9,7 +9,7 @@
     "apps/server"
   ],
   "engines": {
-    "node": ">=20.11"
+    "node": ">=24.22.1"
   },
   "scripts": {
     "build": "npm run build -w @consent/widget && npm run build -w @consent/server",
@@ -19,7 +19,7 @@
     "migrate": "npm run migrate -w @consent/server"
   },
   "devDependencies": {
-    "@types/node": "^22.10.7",
+    "@types/node": "^24.19.2",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }
