@@ -7,10 +7,10 @@ const UNIQUE_VIOLATIONS = new Set([2627, 2601]);
 const INSERT_SQL = `
 INSERT INTO dbo.ConsentRecord
   (EventId, ConsentId, SiteKey, SubjectId, Action, Necessary, Preferences, Analytics, Marketing,
-   PolicyVersion, Language, PageUrl, IpTruncated, IpHash, UserAgent)
+   PolicyVersion, Language, PageUrl, IpAddress, IpTruncated, IpHash, UserAgent)
 VALUES
   (@EventId, @ConsentId, @SiteKey, @SubjectId, @Action, @Necessary, @Preferences, @Analytics, @Marketing,
-   @PolicyVersion, @Language, @PageUrl, @IpTruncated, @IpHash, @UserAgent);`;
+   @PolicyVersion, @Language, @PageUrl, @IpAddress, @IpTruncated, @IpHash, @UserAgent);`;
 
 function errorNumber(err: unknown): number | undefined {
   if (!err || typeof err !== 'object') return undefined;
@@ -54,6 +54,7 @@ export function createMssqlRepository(config: sql.config): ConsentRepository {
         .input('PolicyVersion', sql.NVarChar(32), r.policyVersion)
         .input('Language', sql.VarChar(8), r.language)
         .input('PageUrl', sql.NVarChar(2048), r.pageUrl)
+        .input('IpAddress', sql.VarChar(45), r.ipAddress)
         .input('IpTruncated', sql.VarChar(45), r.ipTruncated)
         .input('IpHash', sql.Char(64), r.ipHash)
         .input('UserAgent', sql.NVarChar(512), r.userAgent);

@@ -3,7 +3,7 @@ import rateLimit from '@fastify/rate-limit';
 import type { FastifyInstance } from 'fastify';
 import { consentBodySchema, type ConsentRecord, type ConsentRepository } from '../domain.js';
 import { errorBody, HttpError } from '../lib/errors.js';
-import { hashIp, normalizeIp, truncateIp } from '../lib/ip.js';
+import { fullIp, hashIp, normalizeIp, truncateIp } from '../lib/ip.js';
 import type { SiteRegistry } from '../lib/sites.js';
 
 export interface ConsentRouteOptions {
@@ -91,6 +91,7 @@ export async function consentRoutes(app: FastifyInstance, opts: ConsentRouteOpti
       policyVersion: body.policyVersion,
       language: body.language,
       pageUrl: sanitizePageUrl(body.pageUrl, origin),
+      ipAddress: fullIp(ip),
       ipTruncated: truncateIp(ip),
       ipHash: ip ? hashIp(ip, ipHashSecret) : null,
       userAgent: typeof userAgent === 'string' && userAgent ? userAgent.slice(0, MAX_USER_AGENT) : null,

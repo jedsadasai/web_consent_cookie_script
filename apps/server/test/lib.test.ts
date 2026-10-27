@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { splitBatches } from '../src/db/migrate.js';
 import { parseTrustProxy } from '../src/env.js';
-import { hashIp, normalizeIp, truncateIp } from '../src/lib/ip.js';
+import { fullIp, hashIp, normalizeIp, truncateIp } from '../src/lib/ip.js';
 import { SiteRegistry } from '../src/lib/sites.js';
 
 describe('ip', () => {
@@ -9,6 +9,13 @@ describe('ip', () => {
     expect(truncateIp('203.0.113.77')).toBe('203.0.113.0');
     expect(truncateIp('::ffff:203.0.113.77')).toBe('203.0.113.0');
     expect(normalizeIp('fe80::1%eth0')).toBe('fe80::1');
+  });
+
+  it('keeps the full IP in canonical form', () => {
+    expect(fullIp('::ffff:203.0.113.77')).toBe('203.0.113.77');
+    expect(fullIp('fe80::1%eth0')).toBe('fe80::1');
+    expect(fullIp('2001:db8::1')).toBe('2001:db8::1');
+    expect(fullIp('not-an-ip')).toBeNull();
   });
 
   it('truncates IPv6 to /48', () => {

@@ -28,7 +28,7 @@ demo/              demo page (strict CSP) served at /demo when ENABLE_DEMO=true
 | **Accessibility (WCAG 2.1 AA)** | Keyboard support, focus trap, Esc to close, `role="dialog"`/`role="switch"`, 44 px touch targets, contrast ≥ 4.5:1 |
 | **UX** | Thai and English (detected automatically, with a toggle), dark mode, `prefers-reduced-motion`, mobile bottom sheet |
 | **Isolation** | Closed Shadow DOM, so page CSS can't break the widget and its CSS can't leak out. Works with a strict CSP (no `unsafe-inline`). |
-| **Privacy** | Records keep only origin + path (no query string), a truncated IP (/24, /48) and an HMAC of the IP. No PII is stored; there is an optional pseudonymous `subjectId`. |
+| **Privacy** | Records keep only origin + path (no query string), the client's public IP (full, plus a truncated /24 or /48 copy and an HMAC) and the user agent. No other PII is stored; there is an optional pseudonymous `subjectId`. Behind a reverse proxy, set `TRUST_PROXY` so the public IP comes from `X-Forwarded-For` instead of the proxy's address. |
 | **Audit trail** | Every choice (accept / reject / custom / withdraw) is an append-only row with the policy version. |
 
 ## Embed on your website
@@ -194,6 +194,7 @@ server {
 - `PolicyVersion`
 - `Language`
 - `PageUrl`
+- `IpAddress` (full client IP, resolved through `TRUST_PROXY`)
 - `IpTruncated`
 - `IpHash`
 - `UserAgent`

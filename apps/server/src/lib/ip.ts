@@ -1,11 +1,17 @@
 import { createHmac } from 'node:crypto';
-import { isIPv4, isIPv6 } from 'node:net';
+import { isIP, isIPv4, isIPv6 } from 'node:net';
 
 /** Strip IPv6 zone IDs and unwrap IPv4-mapped addresses (::ffff:1.2.3.4). */
 export function normalizeIp(ip: string): string {
   const bare = ip.split('%')[0] ?? ip;
   const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(bare);
   return mapped?.[1] ?? bare;
+}
+
+/** The full client address in canonical form, or null if it is not a valid IP. */
+export function fullIp(ip: string): string | null {
+  const addr = normalizeIp(ip);
+  return isIP(addr) ? addr : null;
 }
 
 function expandIPv6(ip: string): number[] | null {

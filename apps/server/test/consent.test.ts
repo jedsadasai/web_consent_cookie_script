@@ -24,10 +24,26 @@ describe('POST /api/v1/consent', () => {
 
     const row = ctx.repo.rows[0]!;
     expect(row.pageUrl).toBe(`${ORIGIN}/th/appointment`); // query + hash stripped
+    expect(row.ipAddress).toBe('127.0.0.1');
     expect(row.ipTruncated).toBe('127.0.0.0');
     expect(row.ipHash).toMatch(/^[0-9a-f]{64}$/);
     expect(row.userAgent).toBe('Mozilla/5.0 test');
     expect(row).toMatchObject({ necessary: true, analytics: true, marketing: false, action: 'custom' });
+  });
+
+  it('stores the public client IP from X-Forwarded-For behind a trusted proxy', async () => {
+    const ctx = await makeApp({ trustProxy: 1 });
+    app = ctx.app;
+    const res = await post(app, payload(), { origin: ORIGIN, 'x-forwarded-for': '198.51.100.23' });
+    expect(res.statusCode).toBe(201);
+    expect(ctx.repo.rows[0]).toMatchObject({ ipAddress: '198.51.100.23', ipTruncated: '198.51.100.0' });
+  });
+
+  it('ignores X-Forwarded-For when no proxy is trusted', async () => {
+    const ctx = await makeApp();
+    app = ctx.app;
+    await post(app, payload(), { origin: ORIGIN, 'x-forwarded-for': '198.51.100.23' });
+    expect(ctx.repo.rows[0]!.ipAddress).toBe('127.0.0.1');
   });
 
   it('is idempotent on eventId', async () => {

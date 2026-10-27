@@ -44,6 +44,7 @@ export interface ConsentRecord {
   policyVersion: string;
   language: 'th' | 'en';
   pageUrl: string | null;
+  ipAddress: string | null;
   ipTruncated: string | null;
   ipHash: string | null;
   userAgent: string | null;

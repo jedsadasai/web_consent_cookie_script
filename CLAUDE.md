@@ -67,7 +67,7 @@ docker compose up -d app                     # production: app only, DB_* points
   - Checks the request `Origin` against `SITES`. The format is `key=origin,origin;key2=…`, parsed by `lib/sites.ts`. An origin may be `https://*.example.com`, which matches any subdomain (not the apex) on the same scheme and port. This check runs in our own code, not only via CORS.
   - Then validates the body against a strict zod schema with a 4 KB limit.
   - Strips `pageUrl` down to origin + path.
-  - Derives the IP from `req.ip`, which honours `TRUST_PROXY`, then stores it truncated (v4 /24, v6 /48) plus an HMAC with `IP_HASH_SECRET` (`lib/ip.ts`).
+  - Derives the IP from `req.ip`, which honours `TRUST_PROXY`, then stores it in full (`IpAddress`, migration 002), truncated (v4 /24, v6 /48) and as an HMAC with `IP_HASH_SECRET` (`lib/ip.ts`).
   - Inserts the record. A unique `EventId` makes the endpoint idempotent: SQL errors 2627/2601 map to `'duplicate'`, which returns 200; a new record returns 201.
 - **`TRUST_PROXY`** accepts a hop count, IP or CIDR. The value `true` is rejected on purpose. A hop count is converted into a trust function in `app.ts`.
 - **Widget serving.** `routes/widget.ts` serves the widget from `WIDGET_DIR`, which defaults to `packages/widget/dist`; build the widget first or `/consent.js` 404s.
