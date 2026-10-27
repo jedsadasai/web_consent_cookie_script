@@ -1,0 +1,2 @@
+# Normalize all text files to LF in the repo and the working tree (the Docker image is Linux).
+* text=auto eol=lf
