@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveConfig, safeHttpUrl } from '../src/config';
-import { defaultPolicyUrl } from '../src/defaults';
+import { defaultPolicyUrl, defaultTheme } from '../src/defaults';
 import { getTexts } from '../src/i18n';
 
 function scriptWith(data: Record<string, string>, src = 'https://consent.example.com/consent.js'): HTMLScriptElement {
@@ -66,6 +66,14 @@ describe('resolveConfig', () => {
 
   it('ignores the unfilled host policy-URL slot', () => {
     expect(defaultPolicyUrl()).toBeUndefined();
+  });
+
+  it('falls back to the host theme unless the page sets one', () => {
+    expect(resolveConfig(scriptWith({}), undefined, { theme: 'dark' }).theme).toBe('dark');
+    expect(resolveConfig(scriptWith({ theme: 'light' }), undefined, { theme: 'dark' }).theme).toBe('light');
+    expect(resolveConfig(scriptWith({ theme: 'neon' }), undefined, { theme: 'dark' }).theme).toBe('dark');
+    expect(resolveConfig(scriptWith({})).theme).toBe('auto');
+    expect(defaultTheme()).toBeUndefined();
   });
 
   it('lets window config override attributes', () => {
