@@ -42,9 +42,9 @@ Replace the old `#popupAlert` + `cookiealertT.js` + `cookiealert.css` with:
         defer></script>
 ```
 
-The cookie-policy link (opens in a new tab) comes from the server's `POLICY_URL`; add `data-policy-url` only to override it on a page.
+The cookie-policy link (opens in a new tab) comes from the server's `POLICY_URL`, and the color theme from `THEME` (`auto` / `light` / `dark`). Add `data-policy-url` or `data-theme` only to override them on a page.
 
-With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.json`. The server bakes `POLICY_URL` into the served script, so they change whenever `POLICY_URL` does:
+With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.json`. The server bakes `POLICY_URL` and `THEME` into the served script, so they change whenever either does:
 
 ```html
 <script src="https://consent.example.com/v/<hash>/consent.js"
@@ -60,8 +60,8 @@ With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.j
 | `data-policy-version` | `policyVersion` | `1` | Change this when the policy changes, so visitors are asked again |
 | `data-lang` | `language` | auto | `th` / `en` / `auto` |
 | `data-categories` | `categories` | all | e.g. `analytics,marketing` |
-| `data-accent` | `accentColor` | `#0f766e` | Hex color |
-| `data-theme` | `theme` | `auto` | `auto` / `light` / `dark` |
+| `data-accent` | `accentColor` | `#12805c` | Hex color |
+| `data-theme` | `theme` | server `THEME` (`auto`) | `auto` / `light` / `dark` |
 | `data-position` | `position` | `bottom` | `bottom` / `bottom-left` / `bottom-right` |
 | `data-settings-button` | `settingsButton` | `true` | Floating button to reopen the settings |
 | `data-google-consent-mode` | `googleConsentMode` | `false` | Turns on GCM v2 (load the script without `defer`, before gtag) |
@@ -128,6 +128,7 @@ npm run dev   # uses ../../.env
    - `TRUST_PROXY=1` (or the proxy IP)
    - `SITES=rjh=https://www.rajthanee.com,https://rajthanee.com`
    - `POLICY_URL=https://www.rajthanee.com/policy/privacy-policy-cookie`
+   - `THEME=auto` (or `light` / `dark` to force one)
    - `DB_*` pointing at the real server
    - `DB_TRUST_SERVER_CERT=false` (install a trusted certificate on SQL Server)
    - Leave out `MIGRATE_CREATE_DB`, `MIGRATE_APP_LOGIN` and `MSSQL_SA_PASSWORD`.

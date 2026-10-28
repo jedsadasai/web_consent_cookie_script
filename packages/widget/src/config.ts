@@ -3,6 +3,7 @@ import type { Lang, OptionalCategory } from './types';
 import { OPTIONAL_CATEGORIES, SITE_KEY_RE, SUBJECT_ID_RE, VERSION_RE } from './types';
 
 export type Theme = 'auto' | 'light' | 'dark';
+const THEMES: readonly Theme[] = ['auto', 'light', 'dark'];
 export type Position = 'bottom' | 'bottom-left' | 'bottom-right';
 
 /** Options accepted from `data-*` attributes or `window.CookieConsentConfig`. */
@@ -127,6 +128,7 @@ export function readScriptAttributes(script: HTMLScriptElement | null): Record<s
 /** Defaults supplied by the serving host, used when the page does not set the option. */
 export interface HostDefaults {
   policyUrl?: string;
+  theme?: Theme;
 }
 
 /**
@@ -164,7 +166,7 @@ export function resolveConfig(
     rejectDays: toInt(raw.rejectDays, 180, 1, 395),
     settingsButton: toBool(raw.settingsButton, true),
     accentColor: matches(raw.accentColor, HEX_COLOR_RE),
-    theme: oneOf<Theme>(raw.theme, ['auto', 'light', 'dark'], 'auto'),
+    theme: oneOf<Theme>(raw.theme, THEMES, oneOf<Theme>(defaults.theme, THEMES, 'auto')),
     position: oneOf<Position>(raw.position, ['bottom', 'bottom-left', 'bottom-right'], 'bottom'),
     googleConsentMode: toBool(raw.googleConsentMode, false),
     cookieDomain: matches(raw.cookieDomain, DOMAIN_RE),

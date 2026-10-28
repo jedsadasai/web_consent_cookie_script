@@ -1,0 +1,37 @@
+name: consent
+
+x-hardening: &hardening
+  image: consent-cookie:1.2
+  pull_policy: never
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  env_file: .env
+
+services:
+  app:
+    <<: *hardening
+    # nginx reaches the app by this name: set $upstream http://consent:3001;
+    container_name: consent
+    # No host ports: reachable only through gateway-nginx on gateway-edge.
+    networks: [gateway-edge]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+          pids: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  gateway-edge:
+    external: true

@@ -1,44 +1,127 @@
+/*
+ * Build targets Chrome 90 / Safari 14 / Firefox 90, so newer features
+ * (color-mix, dvh, text-wrap) are progressive enhancements with fallbacks.
+ */
+
 :host {
   all: initial;
-  --cc-accent: #0f766e;
+  color-scheme: light;
+
+  /* Palette */
+  --cc-accent: #12805c;
   --cc-on-accent: #ffffff;
-  --cc-link: #0f766e;
+  --cc-link: #12805c;
   --cc-bg: #ffffff;
-  --cc-fg: #0f172a;
-  --cc-muted: #475569;
-  --cc-surface: #f1f5f9;
-  --cc-border: rgba(15, 23, 42, 0.1);
-  --cc-overlay: rgba(2, 6, 23, 0.45);
-  --cc-switch-off: #cbd5e1;
-  --cc-radius: 20px;
-  --cc-shadow: 0 24px 60px -16px rgba(15, 23, 42, 0.28), 0 6px 18px -6px rgba(15, 23, 42, 0.12);
+  --cc-fg: #1f2a37;
+  --cc-muted: #4a5761;
+  --cc-surface: #f3f8f5;
+  --cc-border: #e2eae5;
+  --cc-border-strong: #c9d5cf;
+  --cc-switch-off: #84958c;
+  --cc-overlay: rgba(17, 24, 39, 0.4);
+
+  /*
+   * Glass. Opacity is high enough that text keeps AA contrast even over a
+   * dark page; the sheen keeps the glass visible over flat backgrounds.
+   */
+  --cc-glass: rgba(255, 255, 255, 0.8);
+  --cc-glass-raised: rgba(255, 255, 255, 0.55);
+  --cc-glass-edge: rgba(255, 255, 255, 0.75);
+  --cc-glass-sheen: linear-gradient(145deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%);
+  --cc-glass-blur: blur(20px) saturate(170%);
+
+  /* Derived from --cc-accent; see the @supports block below */
+  --cc-tint: 10%;
+  --cc-accent-soft: var(--cc-surface);
+  --cc-accent-hover: var(--cc-accent);
+
+  /* Shape and elevation */
+  --cc-radius-lg: 16px;
+  --cc-radius-md: 10px;
+  --cc-shadow-lg: 0 1px 2px rgba(16, 40, 30, 0.06), 0 16px 40px -16px rgba(16, 40, 30, 0.22);
+  --cc-shadow-sm: 0 1px 2px rgba(16, 40, 30, 0.08), 0 4px 12px -4px rgba(16, 40, 30, 0.14);
+
+  /* Motion */
+  --cc-ease: cubic-bezier(0.2, 0, 0, 1);
+  --cc-dur-fast: 150ms;
+  --cc-dur: 280ms;
+
   --cc-font: "Noto Sans Thai", "IBM Plex Sans Thai", "Sarabun", system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 }
 
 :host([data-theme="dark"]) {
-  --cc-link: #5eead4;
-  --cc-bg: #0b1220;
-  --cc-fg: #e5e7eb;
-  --cc-muted: #9ca3af;
-  --cc-surface: #131c2e;
-  --cc-border: rgba(148, 163, 184, 0.16);
+  color-scheme: dark;
+  --cc-link: #5fd3a5;
+  --cc-bg: #0f1714;
+  --cc-fg: #e6ece9;
+  --cc-muted: #9aa8a2;
+  --cc-surface: #16211d;
+  --cc-border: rgba(154, 168, 162, 0.16);
+  --cc-border-strong: rgba(154, 168, 162, 0.32);
+  --cc-switch-off: #5d6e66;
   --cc-overlay: rgba(0, 0, 0, 0.6);
-  --cc-switch-off: #334155;
-  --cc-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.7), 0 6px 18px -6px rgba(0, 0, 0, 0.4);
+  --cc-tint: 20%;
+  --cc-shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+  --cc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+  --cc-glass: rgba(15, 23, 20, 0.84);
+  --cc-glass-raised: rgba(255, 255, 255, 0.04);
+  --cc-glass-edge: rgba(255, 255, 255, 0.1);
+  --cc-glass-sheen: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 55%);
 }
 
 @media (prefers-color-scheme: dark) {
   :host(:not([data-theme="light"])) {
-    --cc-link: #5eead4;
-    --cc-bg: #0b1220;
-    --cc-fg: #e5e7eb;
-    --cc-muted: #9ca3af;
-    --cc-surface: #131c2e;
-    --cc-border: rgba(148, 163, 184, 0.16);
+    color-scheme: dark;
+    --cc-link: #5fd3a5;
+    --cc-bg: #0f1714;
+    --cc-fg: #e6ece9;
+    --cc-muted: #9aa8a2;
+    --cc-surface: #16211d;
+    --cc-border: rgba(154, 168, 162, 0.16);
+    --cc-border-strong: rgba(154, 168, 162, 0.32);
+    --cc-switch-off: #5d6e66;
     --cc-overlay: rgba(0, 0, 0, 0.6);
-    --cc-switch-off: #334155;
-    --cc-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.7), 0 6px 18px -6px rgba(0, 0, 0, 0.4);
+    --cc-tint: 20%;
+    --cc-shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+    --cc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+    --cc-glass: rgba(15, 23, 20, 0.84);
+    --cc-glass-raised: rgba(255, 255, 255, 0.04);
+    --cc-glass-edge: rgba(255, 255, 255, 0.1);
+    --cc-glass-sheen: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 55%);
+  }
+}
+
+/*
+ * A declaration that uses var() can't fall back to an earlier declaration, so
+ * color-mix tokens are only defined where supported. They follow a page-level
+ * accentColor override.
+ */
+@supports (color: color-mix(in srgb, red 10%, transparent)) {
+  :host {
+    --cc-accent-soft: color-mix(in srgb, var(--cc-accent) var(--cc-tint), transparent);
+    --cc-accent-hover: color-mix(in srgb, var(--cc-accent) 86%, #000000);
+  }
+
+  /* Dark mode needs a lighter link than the accent to stay readable. */
+  :host([data-theme="dark"]) {
+    --cc-link: color-mix(in oklab, var(--cc-accent) 50%, #ffffff);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :host(:not([data-theme="light"])) {
+      --cc-link: color-mix(in oklab, var(--cc-accent) 50%, #ffffff);
+    }
+  }
+}
+
+@media (prefers-contrast: more) {
+  :host,
+  :host([data-theme]),
+  :host(:not([data-theme="light"])) {
+    --cc-muted: var(--cc-fg);
+    --cc-border: var(--cc-switch-off);
+    --cc-border-strong: var(--cc-fg);
   }
 }
 
@@ -59,7 +142,8 @@
   color: var(--cc-fg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  text-align: start;
 }
 
 .cc-sr-only {
@@ -79,22 +163,21 @@
 .cc-banner {
   position: fixed;
   z-index: 2147483000;
-  left: 16px;
-  right: 16px;
+  inset-inline: 16px;
   bottom: max(16px, env(safe-area-inset-bottom));
-  max-width: 940px;
-  margin: 0 auto;
+  max-width: 960px;
+  margin-inline: auto;
   display: grid;
   gap: 16px;
   padding: 20px;
   background: var(--cc-bg);
   color: var(--cc-fg);
   border: 1px solid var(--cc-border);
-  border-radius: var(--cc-radius);
-  box-shadow: var(--cc-shadow);
+  border-radius: var(--cc-radius-lg);
+  box-shadow: var(--cc-shadow-lg);
   opacity: 0;
-  transform: translateY(24px) scale(0.98);
-  transition: opacity 0.35s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(16px);
+  transition: opacity var(--cc-dur) var(--cc-ease), transform var(--cc-dur) var(--cc-ease);
 }
 
 .cc-banner.cc-in {
@@ -108,16 +191,16 @@
 }
 
 .cc-banner[data-pos="bottom-left"] {
-  right: auto;
+  inset-inline-end: auto;
 }
 
 .cc-banner[data-pos="bottom-right"] {
-  left: auto;
+  inset-inline-start: auto;
 }
 
 .cc-content {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -131,37 +214,40 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--cc-surface);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--cc-radius-md);
+  background: var(--cc-accent-soft);
   color: var(--cc-link);
 }
 
 .cc-badge svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .cc-title {
   flex: 1;
+  min-width: 0;
   margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-wrap: balance;
 }
 
 .cc-text {
   margin: 0;
   color: var(--cc-muted);
   font-size: 14.5px;
+  text-wrap: pretty;
 }
 
 .cc-link {
   color: var(--cc-link);
   font-weight: 600;
   text-decoration: underline;
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   border-radius: 4px;
 }
@@ -173,7 +259,7 @@
 .cc-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .cc-actions .cc-btn-ghost {
@@ -185,8 +271,8 @@
   .cc-banner[data-pos="bottom"] {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 28px;
-    padding: 22px 24px;
+    gap: 32px;
+    padding: 20px 24px;
   }
 
   .cc-banner[data-pos="bottom"] .cc-actions {
@@ -200,59 +286,74 @@
 
 /* ---------- Buttons ---------- */
 
-.cc-btn {
+.cc-btn,
+.cc-lang,
+.cc-icon-btn,
+.cc-fab {
   appearance: none;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.cc-btn {
   min-height: 44px;
   padding: 10px 18px;
-  font: inherit;
   font-size: 14.5px;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
+  /* Transparent border becomes visible in forced-colors mode. */
   border: 1px solid transparent;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease, transform 0.1s ease;
+  border-radius: var(--cc-radius-md);
+  transition: background-color var(--cc-dur-fast) ease, border-color var(--cc-dur-fast) ease,
+    color var(--cc-dur-fast) ease, transform var(--cc-dur-fast) var(--cc-ease);
 }
 
 .cc-btn:active {
-  transform: translateY(1px);
+  transform: scale(0.98);
 }
 
 .cc-btn-primary {
   background: var(--cc-accent);
   color: var(--cc-on-accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .cc-btn-primary:hover {
-  filter: brightness(1.1);
+  background: var(--cc-accent-hover);
+}
+
+@supports not (color: color-mix(in srgb, red 10%, transparent)) {
+  .cc-btn-primary:hover {
+    filter: brightness(0.9);
+  }
 }
 
 .cc-btn-ghost {
   background: transparent;
   color: var(--cc-fg);
-  border-color: var(--cc-border);
+  border-color: var(--cc-border-strong);
 }
 
 .cc-btn-ghost:hover {
-  background: var(--cc-surface);
+  background: var(--cc-accent-soft);
+  border-color: var(--cc-accent);
 }
 
 .cc-lang {
-  appearance: none;
   flex: none;
   min-width: 44px;
   min-height: 36px;
   padding: 6px 12px;
-  font: inherit;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--cc-muted);
   background: transparent;
-  border: 1px solid var(--cc-border);
+  border: 1px solid var(--cc-border-strong);
   border-radius: 999px;
-  cursor: pointer;
+  transition: background-color var(--cc-dur-fast) ease, color var(--cc-dur-fast) ease;
 }
 
 .cc-lang:hover {
@@ -261,7 +362,6 @@
 }
 
 .cc-icon-btn {
-  appearance: none;
   flex: none;
   display: grid;
   place-items: center;
@@ -271,8 +371,8 @@
   color: var(--cc-muted);
   background: transparent;
   border: 0;
-  border-radius: 12px;
-  cursor: pointer;
+  border-radius: 999px;
+  transition: background-color var(--cc-dur-fast) ease, color var(--cc-dur-fast) ease;
 }
 
 .cc-icon-btn:hover {
@@ -305,10 +405,8 @@
   align-items: flex-end;
   justify-content: center;
   background: var(--cc-overlay);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--cc-dur) var(--cc-ease);
 }
 
 .cc-overlay.cc-in {
@@ -320,12 +418,13 @@
   flex-direction: column;
   width: 100%;
   max-height: 92vh;
+  max-height: 92dvh;
   background: var(--cc-bg);
   color: var(--cc-fg);
-  border-radius: var(--cc-radius) var(--cc-radius) 0 0;
-  box-shadow: var(--cc-shadow);
-  transform: translateY(32px);
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--cc-radius-lg) var(--cc-radius-lg) 0 0;
+  box-shadow: var(--cc-shadow-lg);
+  transform: translateY(24px);
+  transition: transform var(--cc-dur) var(--cc-ease);
   outline: none;
 }
 
@@ -342,9 +441,10 @@
   .cc-modal {
     max-width: 580px;
     max-height: min(86vh, 760px);
+    max-height: min(86dvh, 760px);
     border: 1px solid var(--cc-border);
-    border-radius: var(--cc-radius);
-    transform: translateY(12px) scale(0.98);
+    border-radius: var(--cc-radius-lg);
+    transform: translateY(8px) scale(0.98);
   }
 }
 
@@ -352,20 +452,21 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 20px 4px 22px;
+  padding: 20px 16px 4px 24px;
 }
 
 .cc-modal-body {
-  padding: 8px 22px 18px;
+  padding: 8px 24px 20px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .cc-modal-foot {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 16px 22px max(20px, env(safe-area-inset-bottom));
+  gap: 8px;
+  padding: 16px 24px max(20px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--cc-border);
 }
 
@@ -381,18 +482,21 @@
   }
 }
 
+/* Categories render as one grouped list with dividers. */
 .cc-cats {
-  display: grid;
-  gap: 10px;
   margin: 16px 0 0;
   padding: 0;
   list-style: none;
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
 }
 
 .cc-cat {
   padding: 14px 16px;
-  background: var(--cc-surface);
-  border-radius: 14px;
+}
+
+.cc-cat + .cc-cat {
+  border-top: 1px solid var(--cc-border);
 }
 
 .cc-cat-row {
@@ -404,7 +508,7 @@
 
 .cc-cat-title {
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.4;
   cursor: pointer;
 }
@@ -417,6 +521,7 @@
   margin: 4px 0 0;
   color: var(--cc-muted);
   font-size: 13.5px;
+  text-wrap: pretty;
 }
 
 .cc-pill {
@@ -426,7 +531,7 @@
   font-weight: 600;
   white-space: nowrap;
   color: var(--cc-link);
-  background: var(--cc-bg);
+  background: var(--cc-accent-soft);
   border-radius: 999px;
 }
 
@@ -435,13 +540,14 @@
   -webkit-appearance: none;
   position: relative;
   flex: none;
-  width: 46px;
-  height: 28px;
+  width: 44px;
+  height: 24px;
   margin: 0;
   background: var(--cc-switch-off);
   border-radius: 999px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  touch-action: manipulation;
+  transition: background-color var(--cc-dur-fast) ease;
 }
 
 .cc-switch::before {
@@ -449,12 +555,12 @@
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   background: #ffffff;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform var(--cc-dur-fast) var(--cc-ease);
 }
 
 .cc-switch:checked {
@@ -462,43 +568,120 @@
 }
 
 .cc-switch:checked::before {
-  transform: translateX(18px);
+  transform: translateX(20px);
 }
 
 /* ---------- Floating settings button ---------- */
 
 .cc-fab {
-  appearance: none;
   position: fixed;
   z-index: 2147482999;
-  left: 16px;
+  inset-inline-start: 16px;
   bottom: max(16px, env(safe-area-inset-bottom));
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   color: var(--cc-link);
   background: var(--cc-bg);
-  border: 1px solid var(--cc-border);
+  border: 1px solid var(--cc-border-strong);
   border-radius: 50%;
-  box-shadow: var(--cc-shadow);
-  cursor: pointer;
-  transition: transform 0.2s ease;
+  box-shadow: var(--cc-shadow-sm);
+  transition: background-color var(--cc-dur-fast) ease, border-color var(--cc-dur-fast) ease;
 }
 
 .cc-fab[data-pos="bottom-right"] {
-  left: auto;
-  right: 16px;
+  inset-inline: auto 16px;
 }
 
 .cc-fab:hover {
-  transform: translateY(-2px) rotate(-8deg);
+  background: var(--cc-accent-soft);
+  border-color: var(--cc-accent);
 }
 
 .cc-fab svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
+}
+
+/* ---------- Glass surfaces ---------- */
+
+/*
+ * Without backdrop-filter the surfaces stay opaque. The overlay only dims:
+ * a backdrop-filter on it would become the modal's backdrop root and the
+ * modal would blur the dim color instead of the page.
+ */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .cc-banner,
+  .cc-modal,
+  .cc-fab {
+    background-color: var(--cc-glass);
+    background-image: var(--cc-glass-sheen);
+    border-color: var(--cc-glass-edge);
+    -webkit-backdrop-filter: var(--cc-glass-blur);
+    backdrop-filter: var(--cc-glass-blur);
+  }
+
+  .cc-banner,
+  .cc-modal {
+    box-shadow: var(--cc-shadow-lg), inset 0 1px 0 var(--cc-glass-edge);
+  }
+
+  .cc-cats {
+    background: var(--cc-glass-raised);
+  }
+
+  .cc-lang {
+    background: var(--cc-glass-raised);
+  }
+
+  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    .cc-banner,
+    .cc-modal,
+    .cc-fab {
+      background: var(--cc-bg);
+      border-color: var(--cc-border);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    .cc-cats,
+    .cc-lang {
+      background: transparent;
+    }
+  }
+}
+
+/* ---------- User preferences ---------- */
+
+/* appearance:none switches lose their fill in Windows high-contrast mode; redraw them with system colors. */
+@media (forced-colors: active) {
+  .cc-switch {
+    forced-color-adjust: none;
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+
+  .cc-switch::before {
+    top: 2px;
+    left: 2px;
+    background: CanvasText;
+    box-shadow: none;
+  }
+
+  .cc-switch:checked {
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  .cc-switch:checked::before {
+    background: HighlightText;
+  }
+
+  .cc-modal {
+    border: 1px solid CanvasText;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -506,10 +689,16 @@
   .cc-overlay,
   .cc-modal,
   .cc-btn,
+  .cc-lang,
+  .cc-icon-btn,
   .cc-switch,
   .cc-switch::before,
   .cc-fab {
     transition: none !important;
+  }
+
+  .cc-btn:active {
+    transform: none;
   }
 }
 
