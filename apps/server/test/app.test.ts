@@ -56,6 +56,14 @@ describe('POLICY_URL env', () => {
     expect(loadEnv(base).POLICY_URL).toBeUndefined();
     expect(() => loadEnv({ ...base, POLICY_URL: 'javascript:alert(1)' })).toThrow(/POLICY_URL/);
   });
+
+  it('accepts THEME auto/light/dark, defaults to auto and rejects anything else', () => {
+    expect(loadEnv(base).THEME).toBe('auto');
+    expect(loadEnv({ ...base, THEME: '' }).THEME).toBe('auto');
+    expect(loadEnv({ ...base, THEME: ' Dark ' }).THEME).toBe('dark');
+    expect(loadEnv({ ...base, THEME: 'light' }).THEME).toBe('light');
+    expect(() => loadEnv({ ...base, THEME: 'blue' })).toThrow(/THEME/);
+  });
 });
 
 describe('widget delivery', () => {
@@ -110,6 +118,22 @@ describe('widget delivery', () => {
   it('serves the bundle unchanged without POLICY_URL', async () => {
     ({ app } = await makeApp({ widgetDir: widgetFixture(slotted) }));
     expect((await app.inject('/consent.js')).body).toBe(slotted);
+    expect((await app.inject('/consent.manifest.json')).json()).toMatchObject({ integrity: 'sha384-test' });
+  });
+
+  const themed = 'var u="__CC_DEFAULT_POLICY_URL__",t="__CC_DEFAULT_THEME__";';
+
+  it('injects THEME alongside POLICY_URL and recomputes integrity', async () => {
+    ({ app } = await makeApp({ widgetDir: widgetFixture(themed), policyUrl: 'https://a.example/p', theme: 'dark' }));
+    const res = await app.inject('/consent.js');
+    expect(res.body).toBe('var u="https://a.example/p",t="dark";');
+    const manifest = (await app.inject('/consent.manifest.json')).json() as { integrity: string };
+    expect(manifest.integrity).toBe(`sha384-${createHash('sha384').update(res.rawPayload).digest('base64')}`);
+  });
+
+  it('leaves the theme slot alone for THEME=auto', async () => {
+    ({ app } = await makeApp({ widgetDir: widgetFixture(themed), theme: 'auto' }));
+    expect((await app.inject('/consent.js')).body).toBe(themed);
     expect((await app.inject('/consent.manifest.json')).json()).toMatchObject({ integrity: 'sha384-test' });
   });
 });

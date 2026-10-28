@@ -12,25 +12,43 @@ export interface WidgetAsset {
   etag: string;
 }
 
-/** String literal in the bundle that `packages/widget/src/defaults.ts` reads the policy URL from. */
+export type WidgetTheme = 'auto' | 'light' | 'dark';
+
+export interface WidgetDefaults {
+  policyUrl?: string;
+  theme?: WidgetTheme;
+}
+
+/** String literals in the bundle that `packages/widget/src/defaults.ts` reads the defaults from. */
 const POLICY_URL_SLOT = '"__CC_DEFAULT_POLICY_URL__"';
+const THEME_SLOT = '"__CC_DEFAULT_THEME__"';
 
 /**
- * Fill the policy-URL slot and recompute hash/integrity the same way `build.mjs`
+ * Fill the default slots and recompute hash/integrity the same way `build.mjs`
  * does, so the manifest and `/v/:hash/` keep matching the bytes we serve.
  */
-function injectPolicyUrl(asset: WidgetAsset, policyUrl: string): WidgetAsset {
-  const source = asset.body.toString('utf8');
-  if (!source.includes(POLICY_URL_SLOT)) return asset;
-  // `href` percent-encodes non-ASCII, and JSON.stringify yields a valid JS string literal.
-  const body = Buffer.from(source.replace(POLICY_URL_SLOT, () => JSON.stringify(new URL(policyUrl).href)), 'utf8');
+function injectDefaults(asset: WidgetAsset, defaults: WidgetDefaults): WidgetAsset {
+  let source = asset.body.toString('utf8');
+  const original = source;
+  if (defaults.policyUrl) {
+    // `href` percent-encodes non-ASCII, and JSON.stringify yields a valid JS string literal.
+    const literal = JSON.stringify(new URL(defaults.policyUrl).href);
+    source = source.replace(POLICY_URL_SLOT, () => literal);
+  }
+  // `auto` is the widget's own default, so the bundle (and its SRI hash) stays as built.
+  if (defaults.theme && defaults.theme !== 'auto') {
+    const literal = JSON.stringify(defaults.theme);
+    source = source.replace(THEME_SLOT, () => literal);
+  }
+  if (source === original) return asset;
+  const body = Buffer.from(source, 'utf8');
   const hash = createHash('sha256').update(body).digest('hex').slice(0, 16);
   const integrity = `sha384-${createHash('sha384').update(body).digest('base64')}`;
   return { body, version: asset.version, hash, integrity, etag: `"${hash}"` };
 }
 
 /** Load the built widget into memory once; returns null if it has not been built. */
-export async function loadWidget(dir: string, opts: { policyUrl?: string } = {}): Promise<WidgetAsset | null> {
+export async function loadWidget(dir: string, defaults: WidgetDefaults = {}): Promise<WidgetAsset | null> {
   try {
     const [body, manifestRaw] = await Promise.all([
       readFile(join(dir, 'consent.min.js')),
@@ -39,7 +57,7 @@ export async function loadWidget(dir: string, opts: { policyUrl?: string } = {})
     const m = JSON.parse(manifestRaw) as { version?: unknown; hash?: unknown; integrity?: unknown };
     if (typeof m.hash !== 'string' || typeof m.integrity !== 'string' || typeof m.version !== 'string') return null;
     const asset = { body, version: m.version, hash: m.hash, integrity: m.integrity, etag: `"${m.hash}"` };
-    return opts.policyUrl ? injectPolicyUrl(asset, opts.policyUrl) : asset;
+    return injectDefaults(asset, defaults);
   } catch {
     return null;
   }

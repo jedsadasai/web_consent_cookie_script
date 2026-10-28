@@ -48,6 +48,11 @@ const envSchema = dbEnvSchema.extend({
     .optional()
     .transform((v) => (v?.trim() ? v.trim() : undefined))
     .refine((v) => v === undefined || /^https?:$/.test(safeProtocol(v)), 'POLICY_URL must be an http(s) URL'),
+  /** Default widget color theme; pages can override it with data-theme. Empty means `auto`. */
+  THEME: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim().toLowerCase() || undefined : v),
+    z.enum(['auto', 'light', 'dark']).default('auto'),
+  ),
   WIDGET_DIR: z.string().default(fromRoot('packages/widget/dist')),
   DEMO_DIR: z.string().default(fromRoot('demo')),
 });
