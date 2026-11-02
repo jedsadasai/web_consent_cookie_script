@@ -38,6 +38,40 @@ describe('security headers', () => {
     expect(res.statusCode).toBe(404);
     expect(res.json()).toEqual({ error: { code: 'NOT_FOUND', message: 'Not found' } });
   });
+
+  it.each(['/', '/robots.txt', '/sitemap.xml'])('marks the 404 for %s as not storable', async (url) => {
+    ({ app } = await makeApp());
+    const res = await app.inject(url);
+    expect(res.statusCode).toBe(404);
+    expect(res.headers['cache-control']).toBe('no-store');
+  });
+
+  it('keeps the cache lifetime a route sets for itself', async () => {
+    ({ app } = await makeApp());
+    expect((await app.inject('/consent.js')).headers['cache-control']).toContain('max-age=3600');
+    expect((await app.inject('/consent.manifest.json')).headers['cache-control']).toBe('no-cache');
+  });
+
+  it.each([
+    ['TRACE', '/'],
+    ['TRACE', '/api/v1/consent'],
+    ['PUT', '/api/v1/consent'],
+    ['DELETE', '/consent.js'],
+    ['PATCH', '/healthz'],
+  ] as const)('refuses %s %s with 405 and no echo', async (method, url) => {
+    ({ app } = await makeApp());
+    const res = await app.inject({ method, url, headers: { 'x-probe': 'echo-me', 'max-forwards': '0' } });
+    expect(res.statusCode).toBe(405);
+    expect(res.headers.allow).toBe('GET, HEAD, POST, OPTIONS');
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.json()).toEqual({ error: { code: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' } });
+    expect(res.body).not.toContain('echo-me');
+  });
+
+  it('leaves HEAD on routes working', async () => {
+    ({ app } = await makeApp());
+    expect((await app.inject({ method: 'HEAD', url: '/healthz' })).statusCode).toBe(200);
+  });
 });
 
 describe('POLICY_URL env', () => {
@@ -49,6 +83,33 @@ describe('POLICY_URL env', () => {
     SITES: `a=https://a.example`,
     IP_HASH_SECRET: 'x'.repeat(32),
   };
+
+  it('keeps the secure defaults when optional variables are unset', () => {
+    expect(loadEnv(base)).toMatchObject({
+      DB_PORT: 1433,
+      DB_ENCRYPT: true,
+      DB_TRUST_SERVER_CERT: false,
+      DB_POOL_MAX: 10,
+      NODE_ENV: 'production',
+      PORT: 8080,
+      TRUST_PROXY: 'false',
+      RATE_LIMIT_MAX: 60,
+      RATE_LIMIT_WINDOW_MS: 60_000,
+      HSTS: true,
+      ENABLE_DEMO: false,
+    });
+  });
+
+  it('parses booleans strictly and rejects a short IP_HASH_SECRET', () => {
+    expect(loadEnv({ ...base, DB_ENCRYPT: 'false', HSTS: '0', ENABLE_DEMO: '1' })).toMatchObject({
+      DB_ENCRYPT: false,
+      HSTS: false,
+      ENABLE_DEMO: true,
+    });
+    expect(() => loadEnv({ ...base, DB_ENCRYPT: 'no' })).toThrow(/DB_ENCRYPT/);
+    expect(() => loadEnv({ ...base, IP_HASH_SECRET: 'short' })).toThrow(/IP_HASH_SECRET/);
+    expect(() => loadEnv({ ...base, DB_PORT: '70000' })).toThrow(/DB_PORT/);
+  });
 
   it('accepts http(s), treats empty as unset and rejects other schemes', () => {
     expect(loadEnv({ ...base, POLICY_URL: 'https://a.example/policy' }).POLICY_URL).toBe('https://a.example/policy');

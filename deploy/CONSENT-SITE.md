@@ -121,6 +121,26 @@ sudo docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-n
 # Many users behind one office NAT share an IP: raise rate/burst if they see 429s.
 limit_req_zone $binary_remote_addr zone=consent_api:10m rate=5r/s;
 
+# Allow header for a 405, by path. Empty for any other status, so nginx omits it.
+map "$status:$request_uri" $consent_allow {
+    default       "";
+    "~^405:/api/" "POST, OPTIONS";
+    "~^405:"      "GET, HEAD";
+}
+
+map $status $consent_error_code {
+    default ERROR;
+    400     BAD_REQUEST;
+    403     FORBIDDEN;
+    404     NOT_FOUND;
+    405     METHOD_NOT_ALLOWED;
+    413     PAYLOAD_TOO_LARGE;
+    429     RATE_LIMITED;
+    502     UNAVAILABLE;
+    503     UNAVAILABLE;
+    504     UNAVAILABLE;
+}
+
 server {
     listen 8443 ssl;
     http2 on;
@@ -139,12 +159,32 @@ server {
     client_max_body_size    64k;
     client_body_buffer_size 64k;
 
+    # Errors nginx generates itself (TRACE is always one) use the app's JSON shape
+    # instead of the default page that names nginx. App errors pass through untouched.
+    error_page 400 403 404 405 413 429 500 502 503 504 @consent_error;
+
+    location @consent_error {
+        internal;
+        # add_header here replaces the server-level ones, so repeat them.
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        add_header Allow $consent_allow always;
+        default_type application/json;
+        # error_page keeps the original status, so this 200 is never sent as 200.
+        return 200 '{"error":{"code":"$consent_error_code","message":"Request refused"}}';
+    }
+
     # Block dotfiles (.git, .env, ...) except .well-known.
     location ~ /\.(?!well-known/) {
         return 404;
     }
 
     location /api/ {
+        # POST is the API; OPTIONS is the CORS preflight it needs.
+        if ($request_method !~ ^(POST|OPTIONS)$) {
+            return 405;
+        }
+
         # A location-level limit_req replaces the server-level one, so repeat it.
         limit_req zone=perip burst=40 nodelay;
         limit_req zone=consent_api burst=20 nodelay;
@@ -158,6 +198,11 @@ server {
     }
 
     location / {
+        # Everything else is a read: the widget files and health checks.
+        if ($request_method !~ ^(GET|HEAD)$) {
+            return 405;
+        }
+
         # "localhost" inside the nginx container is nginx itself; use the app's
         # container name on the gateway-edge network.
         set $upstream http://consent:3001;
@@ -185,6 +230,9 @@ server {
 | Dotfile block | `/.env`, `/.git/...` → 404 before the request reaches the app. `/.well-known/` is still allowed. |
 | `location /api/` | The consent API (`POST /api/v1/consent`). Both limits apply here: the general 20/s and the stricter **5/s, burst 20**. The general limit is repeated because a `limit_req` inside a location replaces the server-level one. |
 | `location /` | Everything else: `/consent.manifest.json` and the widget script `/v/<hash>/consent.js`. Only the general limit applies. |
+| `if ($request_method !~ ...)` | Allows only `POST`/`OPTIONS` under `/api/` and `GET`/`HEAD` elsewhere. Anything else, including `TRACK`, gets **405** from nginx and never reaches the app. |
+| `error_page` + `@consent_error` | Errors nginx generates itself return JSON with `no-store`, and `Allow` on a 405, instead of the default page that names nginx. This includes `TRACE`, which nginx always refuses itself. The app's own errors pass through unchanged. |
+| `map` blocks | Choose the `Allow` value and the error code for `@consent_error`. They use the `consent_` prefix because `map` names are shared with every other site on the gateway. |
 | `set $upstream http://consent:3001` | Looks up the container through Docker's DNS **for each request**. If consent is down, only this site returns 502; nginx and the other sites keep running. |
 | `proxy_hide_header Referrer-Policy / Permissions-Policy` | Strips the app's copies so each header is sent once (the gateway's version). |
 
@@ -200,7 +248,7 @@ server {
 
 **`nginx.conf`** (global settings):
 - TLS 1.2 and 1.3 only, with post-quantum key exchange (`X25519MLKEM768`).
-- `server_tokens off`, so the nginx version is hidden.
+- `server_tokens off`, so the nginx version is hidden. The `Server: nginx` header itself remains; see "Hiding the Server header" below.
 - Slow-client timeouts of 15–30s.
 - Access log to stdout in the standard combined format, which CrowdSec reads.
 
@@ -209,6 +257,20 @@ server {
 - An unknown hostname or bare IP gets its TLS connection refused (no certificate is shown).
 
 The app itself sends a strict `Content-Security-Policy` (`default-src 'none'; frame-ancestors 'none'`) and `Access-Control-Allow-Origin: *` for the public widget files, so the gateway adds neither.
+
+### Hiding the Server header
+
+Open source nginx can't remove `Server: nginx` on its own; it needs the `headers-more` module. This setting is gateway-wide, so it also covers the catch-all and the other sites. If the gateway image has the module (Alpine package `nginx-mod-http-headers-more`), add this to `nginx.conf`:
+
+```nginx
+# Top level, before events {}. The path depends on the image.
+load_module /usr/lib/nginx/modules/ngx_http_headers_more_filter_module.so;
+
+# Inside http {}
+more_clear_headers Server;
+```
+
+The `00-default.conf` catch-all still serves nginx's default page for its own errors, which names nginx. It serves every hostname, so it isn't changed here.
 
 ---
 
@@ -224,6 +286,24 @@ The app itself sends a strict `Content-Security-Policy` (`default-src 'none'; fr
 | 40 rapid requests to the manifest | 40 × 200 (normal limit) |
 | Port 3001 on the host | Not open |
 | `MIGRATE_DB_USER`, `MIGRATE_DB_PASSWORD`, `MSSQL_SA_PASSWORD` in the running container | Absent |
+
+## ZAP report of 29 Oct 2026: local retest (2 Nov 2026)
+
+These results come from a **local test copy, not production**: this site config over TLS, stand-ins for the shared snippets written from the descriptions above, and the app with an in-memory repository. The real gateway files weren't available, so run `nginx -t` and repeat the checks after deploying.
+
+| ZAP full scan | Proxy Disclosure (Medium) | Reports |
+|---|---|---|
+| Previous site config, stock nginx | Fires | `nginx` as proxy and server |
+| This site config, stock nginx | Fires | `nginx` as proxy and server |
+| This site config, `Server` header removed | Fires | One `Unknown` proxy and `Unknown` server, no product name |
+| Previous site config, `Server` header removed | Fires | Three `Unknown` proxies and `Unknown` server |
+| App alone, no nginx | Does not fire | n/a |
+
+**The Medium alert is still expected on a rescan.** The hardening removes the product name and the extra methods, but the alert fires whenever nginx is in front of the app, for a reason not yet identified. If it remains after deploying, what's left to see is that a proxy exists. Review it, then record it as an accepted risk in ZAP.
+
+"Storable and Cacheable Content" no longer appeared in any scan: the app now sends `no-store` by default, so ZAP reports "Non-Storable Content" instead. "User Agent Fuzzer" is informational, with no vulnerability or fix.
+
+The production scan reached only `/`, `/robots.txt` and `/sitemap.xml`, which are all 404s. To cover the real surface, seed the next scan with `/consent.manifest.json`, `/v/<hash>/consent.js` and `POST /api/v1/consent`.
 
 ---
 

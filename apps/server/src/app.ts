@@ -26,6 +26,9 @@ export interface AppConfig {
   logger?: FastifyServerOptions['logger'];
 }
 
+/** Every method a route here uses. Anything else (TRACE, PUT, ...) is refused before routing. */
+const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'POST', 'OPTIONS']);
+
 export async function buildApp(cfg: AppConfig, repo: ConsentRepository): Promise<FastifyInstance> {
   const { trustProxy } = cfg;
   const app = Fastify({
@@ -55,8 +58,18 @@ export async function buildApp(cfg: AppConfig, repo: ConsentRepository): Promise
     strictTransportSecurity: cfg.hsts ? { maxAge: 31_536_000, includeSubDomains: true } : false,
   });
 
+  app.addHook('onRequest', async (req, reply) => {
+    if (ALLOWED_METHODS.has(req.method)) return;
+    return reply
+      .code(405)
+      .header('allow', [...ALLOWED_METHODS].join(', '))
+      .send(errorBody('METHOD_NOT_ALLOWED', 'Method not allowed'));
+  });
+
   app.addHook('onSend', async (_req, reply) => {
     reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+    // Only responses that opt in (the widget files) may be stored; this also covers 404s and other errors.
+    if (!reply.hasHeader('cache-control')) reply.header('cache-control', 'no-store');
   });
 
   app.setErrorHandler<FastifyError>((error, req, reply) => {
