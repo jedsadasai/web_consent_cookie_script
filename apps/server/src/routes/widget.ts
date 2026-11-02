@@ -13,15 +13,18 @@ export interface WidgetAsset {
 }
 
 export type WidgetTheme = 'auto' | 'light' | 'dark';
+export type WidgetLanguage = 'auto' | 'th' | 'en';
 
 export interface WidgetDefaults {
   policyUrl?: string;
   theme?: WidgetTheme;
+  language?: WidgetLanguage;
 }
 
 /** String literals in the bundle that `packages/widget/src/defaults.ts` reads the defaults from. */
 const POLICY_URL_SLOT = '"__CC_DEFAULT_POLICY_URL__"';
 const THEME_SLOT = '"__CC_DEFAULT_THEME__"';
+const LANGUAGE_SLOT = '"__CC_DEFAULT_LANGUAGE__"';
 
 /**
  * Fill the default slots and recompute hash/integrity the same way `build.mjs`
@@ -39,6 +42,11 @@ function injectDefaults(asset: WidgetAsset, defaults: WidgetDefaults): WidgetAss
   if (defaults.theme && defaults.theme !== 'auto') {
     const literal = JSON.stringify(defaults.theme);
     source = source.replace(THEME_SLOT, () => literal);
+  }
+  // `th` is likewise the widget's own default.
+  if (defaults.language && defaults.language !== 'th') {
+    const literal = JSON.stringify(defaults.language);
+    source = source.replace(LANGUAGE_SLOT, () => literal);
   }
   if (source === original) return asset;
   const body = Buffer.from(source, 'utf8');

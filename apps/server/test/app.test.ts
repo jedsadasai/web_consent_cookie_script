@@ -64,6 +64,19 @@ describe('POLICY_URL env', () => {
     expect(loadEnv({ ...base, THEME: 'light' }).THEME).toBe('light');
     expect(() => loadEnv({ ...base, THEME: 'blue' })).toThrow(/THEME/);
   });
+
+  it('accepts DEFAULT_LANGUAGE auto/th/en, defaults to th and rejects anything else', () => {
+    expect(loadEnv(base).DEFAULT_LANGUAGE).toBe('th');
+    expect(loadEnv({ ...base, DEFAULT_LANGUAGE: '' }).DEFAULT_LANGUAGE).toBe('th');
+    expect(loadEnv({ ...base, DEFAULT_LANGUAGE: ' EN ' }).DEFAULT_LANGUAGE).toBe('en');
+    expect(loadEnv({ ...base, DEFAULT_LANGUAGE: 'auto' }).DEFAULT_LANGUAGE).toBe('auto');
+    expect(() => loadEnv({ ...base, DEFAULT_LANGUAGE: 'fr' })).toThrow(/DEFAULT_LANGUAGE/);
+    expect(() => loadEnv({ ...base, DEFAULT_LANGUAGE: 'en_US:en' })).toThrow(/DEFAULT_LANGUAGE/);
+  });
+
+  it('ignores the locale variables LANG and LANGUAGE', () => {
+    expect(loadEnv({ ...base, LANG: 'en_US.UTF-8', LANGUAGE: 'en_US:en' }).DEFAULT_LANGUAGE).toBe('th');
+  });
 });
 
 describe('widget delivery', () => {
@@ -134,6 +147,23 @@ describe('widget delivery', () => {
   it('leaves the theme slot alone for THEME=auto', async () => {
     ({ app } = await makeApp({ widgetDir: widgetFixture(themed), theme: 'auto' }));
     expect((await app.inject('/consent.js')).body).toBe(themed);
+    expect((await app.inject('/consent.manifest.json')).json()).toMatchObject({ integrity: 'sha384-test' });
+  });
+
+  const localized = 'var l="__CC_DEFAULT_LANGUAGE__";';
+
+  it('injects DEFAULT_LANGUAGE and recomputes hash and integrity', async () => {
+    ({ app } = await makeApp({ widgetDir: widgetFixture(localized), language: 'en' }));
+    const res = await app.inject('/consent.js');
+    expect(res.body).toBe('var l="en";');
+    const manifest = (await app.inject('/consent.manifest.json')).json() as { hash: string; integrity: string };
+    expect(manifest.integrity).toBe(`sha384-${createHash('sha384').update(res.rawPayload).digest('base64')}`);
+    expect(manifest.hash).not.toBe('abc123def4567890');
+  });
+
+  it('leaves the language slot alone for DEFAULT_LANGUAGE=th', async () => {
+    ({ app } = await makeApp({ widgetDir: widgetFixture(localized), language: 'th' }));
+    expect((await app.inject('/consent.js')).body).toBe(localized);
     expect((await app.inject('/consent.manifest.json')).json()).toMatchObject({ integrity: 'sha384-test' });
   });
 });

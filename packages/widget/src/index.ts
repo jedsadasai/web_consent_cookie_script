@@ -1,7 +1,7 @@
 import { currentPageUrl, sendConsent } from './api';
 import { resolveConfig, type UserConfig } from './config';
 import { consentModeDefault, consentModeUpdate } from './consent-mode';
-import { defaultPolicyUrl, defaultTheme } from './defaults';
+import { defaultLanguage, defaultPolicyUrl, defaultTheme } from './defaults';
 import { activateGated } from './gating';
 import { clearConsent, deleteCookie, readConsent, writeConsent } from './storage';
 import type { Categories, CategoryKey, ConsentAction, StoredConsent } from './types';
@@ -47,6 +47,7 @@ declare global {
   const cfg = resolveConfig(script, window.CookieConsentConfig, {
     policyUrl: defaultPolicyUrl(),
     theme: defaultTheme(),
+    language: defaultLanguage(),
   });
 
   for (const name of cfg.legacyCookies) deleteCookie(name, cfg.cookieDomain);

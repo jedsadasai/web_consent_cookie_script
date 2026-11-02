@@ -276,7 +276,7 @@ sudo docker logs --tail 30 consent
 curl -s https://consent.rajthanee.com/healthz
 ```
 
-**If you changed `POLICY_URL`:** the widget script's hash changes. Websites that embed the widget must use the new `url` and `integrity` values from:
+**If you changed `POLICY_URL`, `THEME` or `DEFAULT_LANGUAGE`:** the widget script's hash changes. Websites that embed the widget must use the new `url` and `integrity` values from:
 
 ```bash
 curl -s https://consent.rajthanee.com/consent.manifest.json

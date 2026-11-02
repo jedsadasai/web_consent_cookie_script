@@ -6,7 +6,7 @@ import type { SiteRegistry } from './lib/sites.js';
 import { consentRoutes } from './routes/consent.js';
 import { demoRoutes } from './routes/demo.js';
 import { healthRoutes } from './routes/health.js';
-import { loadWidget, widgetRoutes, type WidgetTheme } from './routes/widget.js';
+import { loadWidget, widgetRoutes, type WidgetLanguage, type WidgetTheme } from './routes/widget.js';
 
 export interface AppConfig {
   sites: SiteRegistry;
@@ -21,6 +21,8 @@ export interface AppConfig {
   policyUrl?: string;
   /** Default color theme injected into the served widget. */
   theme?: WidgetTheme;
+  /** Default language injected into the served widget. */
+  language?: WidgetLanguage;
   logger?: FastifyServerOptions['logger'];
 }
 
@@ -70,7 +72,7 @@ export async function buildApp(cfg: AppConfig, repo: ConsentRepository): Promise
 
   app.setNotFoundHandler((_req, reply) => reply.code(404).send(errorBody('NOT_FOUND', 'Not found')));
 
-  const asset = await loadWidget(cfg.widgetDir, { policyUrl: cfg.policyUrl, theme: cfg.theme });
+  const asset = await loadWidget(cfg.widgetDir, { policyUrl: cfg.policyUrl, theme: cfg.theme, language: cfg.language });
   if (!asset) app.log.warn({ dir: cfg.widgetDir }, 'widget bundle not found — run `npm run build`');
 
   await app.register(healthRoutes, { repo });
