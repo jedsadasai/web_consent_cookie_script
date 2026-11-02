@@ -99,12 +99,12 @@ export async function widgetRoutes(app: FastifyInstance, opts: { asset: WidgetAs
     return sendScript(req, reply, IMMUTABLE_CACHE);
   });
 
+  // Read by people and deploy tooling, never by the widget, so no cross-origin access:
+  // CORS doesn't apply to curl or server-side fetches, and pages can't read it.
   app.get('/consent.manifest.json', (_req, reply) => {
     if (!asset) return reply.code(404).send(errorBody('NOT_BUILT', 'Widget has not been built'));
     return reply
       .header('cache-control', 'no-cache')
-      .header('cross-origin-resource-policy', 'cross-origin')
-      .header('access-control-allow-origin', '*')
       .send({
         version: asset.version,
         hash: asset.hash,

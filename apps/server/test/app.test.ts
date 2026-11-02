@@ -165,6 +165,14 @@ describe('widget delivery', () => {
     expect(manifest).toMatchObject({ integrity: 'sha384-test', url: '/v/abc123def4567890/consent.js' });
   });
 
+  it('keeps the manifest same-origin', async () => {
+    ({ app } = await makeApp());
+    const res = await app.inject({ url: '/consent.manifest.json', headers: { origin: 'https://evil.example' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+    expect(res.headers['cross-origin-resource-policy']).toBe('same-origin');
+  });
+
   const slotted = 'var u="__CC_DEFAULT_POLICY_URL__";';
 
   it('injects POLICY_URL into the bundle and recomputes hash and integrity', async () => {
