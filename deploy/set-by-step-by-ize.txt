@@ -23,3 +23,18 @@ docker list
 docker images -a
 
 docker rmi ชื่อ-image-ที่ต้องการลบ
+
+--------------------------------------------------
+
+git fetch --prune origin
+
+git branch
+
+git branch -vv | Select-String ': gone\]'
+
+git branch -vv |
+    Select-String ': gone\]' |
+    ForEach-Object {
+        $branch = ($_.Line.Trim() -split '\s+')[0]
+        git branch -d $branch
+    }
