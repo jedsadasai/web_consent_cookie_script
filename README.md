@@ -42,9 +42,9 @@ Replace the old `#popupAlert` + `cookiealertT.js` + `cookiealert.css` with:
         defer></script>
 ```
 
-The cookie-policy link (opens in a new tab) comes from the server's `POLICY_URL`, and the color theme from `THEME` (`auto` / `light` / `dark`). Add `data-policy-url` or `data-theme` only to override them on a page.
+The cookie-policy link (opens in a new tab) comes from the server's `POLICY_URL`, the color theme from `THEME` (`auto` / `light` / `dark`), and the language from `DEFAULT_LANGUAGE` (`th` / `en` / `auto`, default `th`). Add `data-policy-url`, `data-theme` or `data-lang` only to override them on a page. For example, English pages should set `data-lang="en"`, because `<html lang>` is only used with `auto`.
 
-With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.json`. The server bakes `POLICY_URL` and `THEME` into the served script, so they change whenever either does:
+With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.json`. The server bakes `POLICY_URL`, `THEME` and `DEFAULT_LANGUAGE` into the served script, so they change whenever any of those does:
 
 ```html
 <script src="https://consent.example.com/v/<hash>/consent.js"
@@ -58,7 +58,7 @@ With SRI (recommended): take `url` and `integrity` from `GET /consent.manifest.j
 | `data-site` | `siteKey` | `default` | Must match a key in `SITES` on the server |
 | `data-policy-url` | `policyUrl` | server `POLICY_URL` | Link to the cookie policy, opened in a new tab (http/https only) |
 | `data-policy-version` | `policyVersion` | `1` | Change this when the policy changes, so visitors are asked again |
-| `data-lang` | `language` | auto | `th` / `en` / `auto` |
+| `data-lang` | `language` | server `DEFAULT_LANGUAGE` (`th`) | `th` / `en` / `auto` (`<html lang>`, then the browser, then Thai) |
 | `data-categories` | `categories` | all | e.g. `analytics,marketing` |
 | `data-accent` | `accentColor` | `#12805c` | Hex color |
 | `data-theme` | `theme` | server `THEME` (`auto`) | `auto` / `light` / `dark` |
@@ -129,6 +129,7 @@ npm run dev   # uses ../../.env
    - `SITES=rjh=https://www.rajthanee.com,https://rajthanee.com`
    - `POLICY_URL=https://www.rajthanee.com/policy/privacy-policy-cookie`
    - `THEME=auto` (or `light` / `dark` to force one)
+   - `DEFAULT_LANGUAGE=th` (or `en`, or `auto` to follow the page and browser)
    - `DB_*` pointing at the real server
    - `DB_TRUST_SERVER_CERT=false` (install a trusted certificate on SQL Server)
    - Leave out `MIGRATE_CREATE_DB`, `MIGRATE_APP_LOGIN` and `MSSQL_SA_PASSWORD`.

@@ -121,6 +121,70 @@ sudo docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-n
 # Many users behind one office NAT share an IP: raise rate/burst if they see 429s.
 limit_req_zone $binary_remote_addr zone=consent_api:10m rate=5r/s;
 
+# Allow header for a 405, by path. Empty for any other status, so nginx omits it.
+map "$status:$request_uri" $consent_allow {
+    default       "";
+    "~^405:/api/" "POST, OPTIONS";
+    "~^405:"      "GET, HEAD";
+}
+
+map $status $consent_error_code {
+    default ERROR;
+    400     BAD_REQUEST;
+    403     FORBIDDEN;
+    404     NOT_FOUND;
+    405     METHOD_NOT_ALLOWED;
+    413     PAYLOAD_TOO_LARGE;
+    429     RATE_LIMITED;
+    502     UNAVAILABLE;
+    503     UNAVAILABLE;
+    504     UNAVAILABLE;
+}
+
+# Under /api/: POST, and OPTIONS only when it's a real CORS preflight.
+map "$request_method:$http_access_control_request_method" $consent_api_method_ok {
+    default        0;
+    "~^POST:"      1;
+    "~^OPTIONS:.+" 1;
+}
+
+# Allow header for a 405 on plain HTTP, where only the redirect is available.
+map $status $consent_http_allow {
+    default "";
+    405     "GET, HEAD";
+}
+
+# Plain HTTP for this hostname: redirect reads and refuse everything else, the same
+# way the HTTPS server does. Without this the catch-all answers every method with 301.
+server {
+    # Use the same port as the plain HTTP listener in 00-default.conf.
+    listen 8080;
+    server_name consent.rajthanee.com;
+
+    limit_req  zone=perip burst=40 nodelay;
+    limit_conn connperip 30;
+
+    error_page 400 403 404 405 413 429 500 502 503 504 @consent_http_error;
+
+    location @consent_http_error {
+        internal;
+        # Not security-headers.conf: HSTS doesn't belong on a plain HTTP response.
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Allow $consent_http_allow always;
+        default_type application/json;
+        # error_page keeps the original status, so this 200 is never sent as 200.
+        return 200 '{"error":{"code":"$consent_error_code","message":"Request refused"}}';
+    }
+
+    location / {
+        if ($request_method !~ ^(GET|HEAD)$) {
+            return 405;
+        }
+        return 301 https://consent.rajthanee.com$request_uri;
+    }
+}
+
 server {
     listen 8443 ssl;
     http2 on;
@@ -139,12 +203,42 @@ server {
     client_max_body_size    64k;
     client_body_buffer_size 64k;
 
+    # Errors nginx generates itself (TRACE is always one) use the app's JSON shape
+    # instead of the default page that names nginx. App errors pass through untouched.
+    error_page 400 403 404 405 413 429 500 502 503 504 @consent_error;
+
+    location @consent_error {
+        internal;
+        # add_header here replaces the server-level ones, so repeat them.
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        add_header Allow $consent_allow always;
+        default_type application/json;
+        # error_page keeps the original status, so this 200 is never sent as 200.
+        return 200 '{"error":{"code":"$consent_error_code","message":"Request refused"}}';
+    }
+
     # Block dotfiles (.git, .env, ...) except .well-known.
     location ~ /\.(?!well-known/) {
         return 404;
     }
 
+    # Without this, nginx answers /api (no trailing slash) with its own 301 to /api/
+    # for every method, because the location below is a proxied prefix.
+    location = /api {
+        if ($request_method !~ ^(GET|HEAD)$) {
+            return 405;
+        }
+        return 404;
+    }
+
     location /api/ {
+        # POST is the API; OPTIONS is the CORS preflight it needs. Browsers always send
+        # Access-Control-Request-Method on a preflight, so a bare OPTIONS is refused.
+        if ($consent_api_method_ok = 0) {
+            return 405;
+        }
+
         # A location-level limit_req replaces the server-level one, so repeat it.
         limit_req zone=perip burst=40 nodelay;
         limit_req zone=consent_api burst=20 nodelay;
@@ -158,6 +252,11 @@ server {
     }
 
     location / {
+        # Everything else is a read: the widget files and health checks.
+        if ($request_method !~ ^(GET|HEAD)$) {
+            return 405;
+        }
+
         # "localhost" inside the nginx container is nginx itself; use the app's
         # container name on the gateway-edge network.
         set $upstream http://consent:3001;
@@ -185,6 +284,11 @@ server {
 | Dotfile block | `/.env`, `/.git/...` → 404 before the request reaches the app. `/.well-known/` is still allowed. |
 | `location /api/` | The consent API (`POST /api/v1/consent`). Both limits apply here: the general 20/s and the stricter **5/s, burst 20**. The general limit is repeated because a `limit_req` inside a location replaces the server-level one. |
 | `location /` | Everything else: `/consent.manifest.json` and the widget script `/v/<hash>/consent.js`. Only the general limit applies. |
+| Method checks | Under `/api/`: `POST`, and `OPTIONS` only when it carries `Access-Control-Request-Method` (`$consent_api_method_ok`). Every browser preflight sends that header, so only bare `OPTIONS` probes are refused. Everywhere else: `GET`/`HEAD`. Anything else, including `TRACK`, gets **405** from nginx and never reaches the app. |
+| `location = /api` | Without it, nginx answers `/api` with its own 301 to `/api/` for every method, because `/api/` is a proxied prefix location. This gives 405 to non-reads and a JSON 404 to reads, the same as anywhere else. |
+| Port 80 `server` | Plain HTTP for this hostname. `GET`/`HEAD` get a 301 to HTTPS; anything else gets **405** JSON with `Allow: GET, HEAD`. Before, the catch-all answered every method with 301, so a `POST` sent over plain HTTP was redirected instead of refused. No `security-headers.conf` here, because HSTS doesn't belong on a plain HTTP response. **`listen` must match the plain HTTP listener in `00-default.conf`.** `8080` is a guess, since that file isn't in this repo. |
+| `error_page` + `@consent_error` / `@consent_http_error` | Errors nginx generates itself return JSON with `no-store`, and `Allow` on a 405, instead of the default page that names nginx. This includes `TRACE`, which nginx always refuses itself. The app's own errors pass through unchanged. |
+| `map` blocks | Choose the `Allow` value, the error code and the API method check. They use the `consent_` prefix because `map` names are shared with every other site on the gateway. |
 | `set $upstream http://consent:3001` | Looks up the container through Docker's DNS **for each request**. If consent is down, only this site returns 502; nginx and the other sites keep running. |
 | `proxy_hide_header Referrer-Policy / Permissions-Policy` | Strips the app's copies so each header is sent once (the gateway's version). |
 
@@ -200,15 +304,29 @@ server {
 
 **`nginx.conf`** (global settings):
 - TLS 1.2 and 1.3 only, with post-quantum key exchange (`X25519MLKEM768`).
-- `server_tokens off`, so the nginx version is hidden.
+- `server_tokens off`, so the nginx version is hidden. The `Server: nginx` header itself remains; see "Hiding the Server header" below.
 - Slow-client timeouts of 15–30s.
 - Access log to stdout in the standard combined format, which CrowdSec reads.
 
 **`00-default.conf`** (catch-all):
-- `http://` → 301 redirect to `https://`.
+- `http://` → 301 redirect to `https://` for other hostnames. `consent.rajthanee.com` now has its own port 80 server above.
 - An unknown hostname or bare IP gets its TLS connection refused (no certificate is shown).
 
-The app itself sends a strict `Content-Security-Policy` (`default-src 'none'; frame-ancestors 'none'`) and `Access-Control-Allow-Origin: *` for the public widget files, so the gateway adds neither.
+The app itself sends a strict `Content-Security-Policy` (`default-src 'none'; frame-ancestors 'none'`) and `Access-Control-Allow-Origin: *` for the widget script (not the manifest), so the gateway adds neither.
+
+### Hiding the Server header
+
+Open source nginx can't remove `Server: nginx` on its own; it needs the `headers-more` module. This setting is gateway-wide, so it also covers the catch-all and the other sites. If the gateway image has the module (Alpine package `nginx-mod-http-headers-more`), add this to `nginx.conf`:
+
+```nginx
+# Top level, before events {}. The path depends on the image.
+load_module /usr/lib/nginx/modules/ngx_http_headers_more_filter_module.so;
+
+# Inside http {}
+more_clear_headers Server;
+```
+
+The `00-default.conf` catch-all still serves nginx's default page for its own errors, which names nginx. It serves every hostname, so it isn't changed here.
 
 ---
 
@@ -224,6 +342,94 @@ The app itself sends a strict `Content-Security-Policy` (`default-src 'none'; fr
 | 40 rapid requests to the manifest | 40 × 200 (normal limit) |
 | Port 3001 on the host | Not open |
 | `MIGRATE_DB_USER`, `MIGRATE_DB_PASSWORD`, `MSSQL_SA_PASSWORD` in the running container | Absent |
+
+## ZAP report of 29 Oct 2026: local retest (2 Nov 2026)
+
+These results come from a **local test copy, not production**: this site config over TLS, stand-ins for the shared snippets written from the descriptions above, and the app with an in-memory repository. The real gateway files weren't available, so run `nginx -t` and repeat the checks after deploying.
+
+| ZAP full scan | Proxy Disclosure (Medium) | Reports |
+|---|---|---|
+| Previous site config, stock nginx | Fires | `nginx` as proxy and server |
+| This site config, stock nginx | Fires | `nginx` as proxy and server |
+| This site config, `Server` header removed | Fires | One `Unknown` proxy and `Unknown` server, no product name |
+| Previous site config, `Server` header removed | Fires | Three `Unknown` proxies and `Unknown` server |
+| App alone, no nginx | Does not fire | n/a |
+
+The cause was found afterwards; see the next section.
+
+"Storable and Cacheable Content" no longer appeared in any scan: the app now sends `no-store` by default, so ZAP reports "Non-Storable Content" instead. "User Agent Fuzzer" is informational, with no vulnerability or fix.
+
+## ZAP report of 2 Nov 2026: Proxy Disclosure fixed (local retest, 2 Nov 2026)
+
+### Why it fired
+
+ZAP's rule (40025, `ProxyDisclosureScanRule`) sends TRACE, then OPTIONS, in this order:
+
+1. Plain HTTP with `Max-Forwards: 0`
+2. HTTPS with `Max-Forwards: 0`, then 1, then 2
+
+It counts a new "node" each time the `Server` header or **the status code** changes from the previous response. More than one node raises the alert.
+
+Two differences did that:
+
+| Request | Plain HTTP | HTTPS |
+|---|---|---|
+| `OPTIONS /` | 301 from the catch-all | 405 (or the app's 404 before the method allowlist) |
+| `OPTIONS /api` | 405 | 301, nginx's own redirect to `/api/` |
+
+The fix makes the same request get the same status on both, and refuses what isn't needed:
+- A port 80 server for this hostname.
+- `location = /api`.
+- `OPTIONS` under `/api/` only for real preflights.
+
+Removing the `Server` header doesn't help, because the status codes still differ.
+
+### Results
+
+These come from a **local copy, not production**:
+- The site config in this file, run on stock nginx with real ports 80 and 443. The hostname was changed to a `.test` name.
+- Stand-ins for the shared snippets and `00-default.conf`.
+- The app without a database.
+- A Docker network with no outside access.
+- ZAP 2.17.0 full scans with `ascanrulesBeta`/`pscanrulesBeta`.
+
+| ZAP full scan | `/` | `/robots.txt` | `/api/v1/consent` | `/consent.manifest.json` |
+|---|---|---|---|---|
+| Previous config (method allowlist, no port 80 server) | Fires | Fires | Fires | Fires |
+| This config, default scan speed | — | — | Fires on `/api` (before `location = /api` was added) | — |
+| This config with `location = /api`, default speed | — | — | — | — |
+| This config with `location = /api`, `threadPerHost=1`, `delayInMs=100` | — | — | — | — |
+
+The default-speed scan got about 600 × 429 from the rate limits and still didn't fire, so rate limiting doesn't cause this alert once the status codes match. The limits stay as they are.
+
+Other checks on this config:
+
+| Request | Result |
+|---|---|
+| `GET http://…/` | 301 to HTTPS |
+| `POST` / `OPTIONS` / `TRACE` over plain HTTP | 405 JSON, `Allow: GET, HEAD`, `no-store` |
+| Browser preflight to `/api/v1/consent` (`Origin` and `Access-Control-Request-Method`) | 204 with `Access-Control-Allow-Origin` and `-Methods: POST` |
+| Bare `OPTIONS /api/v1/consent` | 405 |
+| `POST /api/v1/consent` from an unknown origin / a known origin with `{}` | 403 `ORIGIN_NOT_ALLOWED` / 400 `VALIDATION`, from the app |
+| `GET`, `OPTIONS` `/api` | 404 / 405 JSON |
+| `/healthz`, `/consent.manifest.json` | 200 |
+
+**After deploying, run `nginx -t` and rescan.** The real `00-default.conf` and snippets weren't available. If the alert still fires, open the rule's requests in ZAP's history for that URL. The status that changes between the plain HTTP request and the HTTPS ones shows what's left.
+
+What the alert doesn't promise: a client can still tell a proxy is there, for example from TLS termination or timing. The fix removes the inconsistent answers and the extra methods.
+
+### Cross-origin findings on the widget files
+
+These appear only when the scan is seeded with the widget URLs.
+
+- **`/consent.manifest.json`:** the app no longer sends `Access-Control-Allow-Origin: *` here. People and deploy tooling read the manifest; the widget never does. Removing the header cleared Cross-Domain Misconfiguration (10098) and CORS Misconfiguration (40040) on it. The change needs a new image.
+- **`/v/<hash>/consent.js` and `/consent.js`:** these still send `Access-Control-Allow-Origin: *`, so 10098 and 40040 report Medium here. **This is an accepted false positive.** The script is public, is served without cookies or credentials, and SRI (`integrity` with `crossorigin="anonymous"`) needs CORS. Record both as accepted for these two URLs.
+
+### Settings for the next scan
+
+- **Targets:** seed it with `/consent.manifest.json`, `/v/<hash>/consent.js` and `/api/v1/consent`. The 2 Nov scan only reached 404 pages.
+- **Speed:** keep it under the rate limits with `-z "-config scanner.threadPerHost=1 -config scanner.delayInMs=100"`. Otherwise most of the scan gets 429 and tests nothing.
+- **CrowdSec:** a full active scan from one IP can get that IP banned. Scan from an address you can unban (`sudo cscli decisions delete --ip <ip>`).
 
 ---
 
@@ -276,7 +482,7 @@ sudo docker logs --tail 30 consent
 curl -s https://consent.rajthanee.com/healthz
 ```
 
-**If you changed `POLICY_URL`:** the widget script's hash changes. Websites that embed the widget must use the new `url` and `integrity` values from:
+**If you changed `POLICY_URL`, `THEME` or `DEFAULT_LANGUAGE`:** the widget script's hash changes. Websites that embed the widget must use the new `url` and `integrity` values from:
 
 ```bash
 curl -s https://consent.rajthanee.com/consent.manifest.json

@@ -6,7 +6,7 @@ import type { SiteRegistry } from './lib/sites.js';
 import { consentRoutes } from './routes/consent.js';
 import { demoRoutes } from './routes/demo.js';
 import { healthRoutes } from './routes/health.js';
-import { loadWidget, widgetRoutes, type WidgetTheme } from './routes/widget.js';
+import { loadWidget, widgetRoutes, type WidgetLanguage, type WidgetTheme } from './routes/widget.js';
 
 export interface AppConfig {
   sites: SiteRegistry;
@@ -21,8 +21,13 @@ export interface AppConfig {
   policyUrl?: string;
   /** Default color theme injected into the served widget. */
   theme?: WidgetTheme;
+  /** Default language injected into the served widget. */
+  language?: WidgetLanguage;
   logger?: FastifyServerOptions['logger'];
 }
+
+/** Every method a route here uses. Anything else (TRACE, PUT, ...) is refused before routing. */
+const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'POST', 'OPTIONS']);
 
 export async function buildApp(cfg: AppConfig, repo: ConsentRepository): Promise<FastifyInstance> {
   const { trustProxy } = cfg;
@@ -53,8 +58,18 @@ export async function buildApp(cfg: AppConfig, repo: ConsentRepository): Promise
     strictTransportSecurity: cfg.hsts ? { maxAge: 31_536_000, includeSubDomains: true } : false,
   });
 
+  app.addHook('onRequest', async (req, reply) => {
+    if (ALLOWED_METHODS.has(req.method)) return;
+    return reply
+      .code(405)
+      .header('allow', [...ALLOWED_METHODS].join(', '))
+      .send(errorBody('METHOD_NOT_ALLOWED', 'Method not allowed'));
+  });
+
   app.addHook('onSend', async (_req, reply) => {
     reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+    // Only responses that opt in (the widget files) may be stored; this also covers 404s and other errors.
+    if (!reply.hasHeader('cache-control')) reply.header('cache-control', 'no-store');
   });
 
   app.setErrorHandler<FastifyError>((error, req, reply) => {
@@ -70,7 +85,7 @@ export async function buildApp(cfg: AppConfig, repo: ConsentRepository): Promise
 
   app.setNotFoundHandler((_req, reply) => reply.code(404).send(errorBody('NOT_FOUND', 'Not found')));
 
-  const asset = await loadWidget(cfg.widgetDir, { policyUrl: cfg.policyUrl, theme: cfg.theme });
+  const asset = await loadWidget(cfg.widgetDir, { policyUrl: cfg.policyUrl, theme: cfg.theme, language: cfg.language });
   if (!asset) app.log.warn({ dir: cfg.widgetDir }, 'widget bundle not found — run `npm run build`');
 
   await app.register(healthRoutes, { repo });

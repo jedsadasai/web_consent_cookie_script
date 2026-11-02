@@ -74,8 +74,8 @@ docker compose up -d app                     # production: app only, DB_* points
   - `/consent.js` is cached for 1h with an ETag.
   - `/v/:hash/consent.js` is immutable.
   - `/consent.manifest.json` is also served.
-  - `POLICY_URL` and `THEME` (env) are injected at load into the bundle's `"__CC_DEFAULT_POLICY_URL__"` and `"__CC_DEFAULT_THEME__"` literals (`src/defaults.ts` in the widget), and hash/integrity/ETag are recomputed. `THEME=auto` leaves the bundle unchanged. `build.mjs` fails if either literal is missing. Page-level `policyUrl` / `theme` still win.
-- **Demo and headers.** `routes/demo.ts` serves `demo/*.html` only when `ENABLE_DEMO=true`, replacing `__NONCE__` with a per-request nonce under a strict CSP. Everything else gets Helmet with `default-src 'none'`. Errors are returned as `{error:{code,message}}` without stack traces.
+  - `POLICY_URL`, `THEME` and `DEFAULT_LANGUAGE` (env) are injected at load into the bundle's `"__CC_DEFAULT_POLICY_URL__"`, `"__CC_DEFAULT_THEME__"` and `"__CC_DEFAULT_LANGUAGE__"` literals (`src/defaults.ts` in the widget), and hash/integrity/ETag are recomputed. `THEME=auto` and `DEFAULT_LANGUAGE=th` leave the bundle unchanged. `build.mjs` fails if any literal is missing. Page-level `policyUrl` / `theme` / `language` still win. The variable isn't named `LANGUAGE` or `LANG` because those are OS locale variables.
+- **Demo and headers.** `routes/demo.ts` serves `demo/*.html` only when `ENABLE_DEMO=true`, replacing `__NONCE__` with a per-request nonce under a strict CSP. Everything else gets Helmet with `default-src 'none'`. Errors are returned as `{error:{code,message}}` without stack traces. Methods other than GET/HEAD/POST/OPTIONS get 405 before routing, and any response that doesn't set `Cache-Control` gets `no-store`.
 - **Migrations.**
   - `db/migrate.ts` applies `migrations/NNN_*.sql` in order. Each file is split on `GO` lines, run in a transaction and tracked in `dbo.SchemaMigrations`.
   - The `MIGRATE_*` env vars are **dev conveniences**: create the DB, set the compatibility level, and create the least-privilege `consent_app` login with INSERT/SELECT only. They aren't used in production.

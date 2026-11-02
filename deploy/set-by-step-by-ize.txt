@@ -1,0 +1,25 @@
+
+
+#build 
+
+docker build -t consent-cookie:1.4 .
+
+#save image
+
+docker save -o consent-cookie.tar consent-cookie:1.4
+
+scp .\consent-cookie.tar rjhadmin@192.168.50.12:~/consent
+
+docker load -i consent-cookie.tar
+
+sudo bash ~/docker-setup/07-app-deploy.sh consent ~/consent/consent-cookie.tar
+
+sudo bash /home/rjhadmin/docker-setup/06-gateway-deploy.sh
+
+---------------------------------------------------------------------
+
+docker list
+
+docker images -a
+
+docker rmi ชื่อ-image-ที่ต้องการลบ

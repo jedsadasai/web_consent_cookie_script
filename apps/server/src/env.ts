@@ -53,6 +53,11 @@ const envSchema = dbEnvSchema.extend({
     (v) => (typeof v === 'string' ? v.trim().toLowerCase() || undefined : v),
     z.enum(['auto', 'light', 'dark']).default('auto'),
   ),
+  /** Default widget language; pages can override it with data-lang. Empty means `th`. */
+  DEFAULT_LANGUAGE: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim().toLowerCase() || undefined : v),
+    z.enum(['auto', 'th', 'en']).default('th'),
+  ),
   WIDGET_DIR: z.string().default(fromRoot('packages/widget/dist')),
   DEMO_DIR: z.string().default(fromRoot('demo')),
 });

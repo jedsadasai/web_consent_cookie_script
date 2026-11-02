@@ -38,8 +38,8 @@ const result = await build({
 
 const code = result.outputFiles[0].contents;
 
-// The server swaps these literals for POLICY_URL and THEME; fail the build if minification changed their form.
-for (const slot of ['"__CC_DEFAULT_POLICY_URL__"', '"__CC_DEFAULT_THEME__"']) {
+// The server swaps these literals for POLICY_URL, THEME and DEFAULT_LANGUAGE; fail the build if minification changed their form.
+for (const slot of ['"__CC_DEFAULT_POLICY_URL__"', '"__CC_DEFAULT_THEME__"', '"__CC_DEFAULT_LANGUAGE__"']) {
   const slots = Buffer.from(code).toString('utf8').split(slot).length - 1;
   if (slots !== 1) throw new Error(`expected one ${slot} literal in the bundle, found ${slots}`);
 }

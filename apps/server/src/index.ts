@@ -22,6 +22,7 @@ async function main(): Promise<void> {
       demoDir: env.DEMO_DIR,
       policyUrl: env.POLICY_URL,
       theme: env.THEME,
+      language: env.DEFAULT_LANGUAGE,
       logger: {
         level: env.LOG_LEVEL,
         // Never log personal data or credentials.

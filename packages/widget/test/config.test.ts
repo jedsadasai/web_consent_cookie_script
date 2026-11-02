@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { resolveConfig, safeHttpUrl } from '../src/config';
-import { defaultPolicyUrl, defaultTheme } from '../src/defaults';
+import { defaultLanguage, defaultPolicyUrl, defaultTheme } from '../src/defaults';
 import { getTexts } from '../src/i18n';
 
 function scriptWith(data: Record<string, string>, src = 'https://consent.example.com/consent.js'): HTMLScriptElement {
@@ -74,6 +74,36 @@ describe('resolveConfig', () => {
     expect(resolveConfig(scriptWith({ theme: 'neon' }), undefined, { theme: 'dark' }).theme).toBe('dark');
     expect(resolveConfig(scriptWith({})).theme).toBe('auto');
     expect(defaultTheme()).toBeUndefined();
+  });
+
+  describe('language', () => {
+    afterEach(() => {
+      document.documentElement.lang = '';
+    });
+
+    it('defaults to Thai whatever the page language says', () => {
+      document.documentElement.lang = 'en';
+      expect(resolveConfig(scriptWith({})).language).toBe('th');
+      expect(defaultLanguage()).toBeUndefined();
+    });
+
+    it('falls back to the host language unless the page sets one', () => {
+      expect(resolveConfig(scriptWith({}), undefined, { language: 'en' }).language).toBe('en');
+      expect(resolveConfig(scriptWith({ lang: 'th' }), undefined, { language: 'en' }).language).toBe('th');
+      expect(resolveConfig(scriptWith({ lang: 'fr' }), undefined, { language: 'en' }).language).toBe('en');
+      expect(resolveConfig(scriptWith({ lang: 'fr' })).language).toBe('th');
+    });
+
+    it('lets window config override the data attribute', () => {
+      expect(resolveConfig(scriptWith({ lang: 'th' }), { language: 'en' }).language).toBe('en');
+    });
+
+    it('detects from the page only for auto', () => {
+      document.documentElement.lang = 'en-GB';
+      expect(resolveConfig(scriptWith({ lang: 'auto' })).language).toBe('en');
+      expect(resolveConfig(scriptWith({}), undefined, { language: 'auto' }).language).toBe('en');
+      expect(resolveConfig(scriptWith({ lang: 'auto' }), undefined, { language: 'th' }).language).toBe('en');
+    });
   });
 
   it('lets window config override attributes', () => {

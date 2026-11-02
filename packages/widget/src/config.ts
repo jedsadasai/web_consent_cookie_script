@@ -4,6 +4,8 @@ import { OPTIONAL_CATEGORIES, SITE_KEY_RE, SUBJECT_ID_RE, VERSION_RE } from './t
 
 export type Theme = 'auto' | 'light' | 'dark';
 const THEMES: readonly Theme[] = ['auto', 'light', 'dark'];
+export type LanguageSetting = Lang | 'auto';
+const LANGUAGE_SETTINGS: readonly LanguageSetting[] = ['auto', 'th', 'en'];
 export type Position = 'bottom' | 'bottom-left' | 'bottom-right';
 
 /** Options accepted from `data-*` attributes or `window.CookieConsentConfig`. */
@@ -12,7 +14,7 @@ export interface UserConfig {
   apiUrl?: string;
   policyUrl?: string;
   policyVersion?: string;
-  language?: Lang | 'auto';
+  language?: LanguageSetting;
   subjectId?: string;
   /** Optional categories to offer; omitted ones are always denied. */
   categories?: OptionalCategory[];
@@ -90,8 +92,8 @@ function toList(value: unknown): string[] | undefined {
   return undefined;
 }
 
-export function detectLanguage(preferred: unknown): Lang {
-  if (preferred === 'th' || preferred === 'en') return preferred;
+/** The `auto` language: the page's `<html lang>`, then the browser, then Thai. */
+export function detectLanguage(): Lang {
   const htmlLang = document.documentElement.lang.toLowerCase();
   if (htmlLang.startsWith('th')) return 'th';
   if (htmlLang.startsWith('en')) return 'en';
@@ -129,6 +131,7 @@ export function readScriptAttributes(script: HTMLScriptElement | null): Record<s
 export interface HostDefaults {
   policyUrl?: string;
   theme?: Theme;
+  language?: LanguageSetting;
 }
 
 /**
@@ -154,12 +157,18 @@ export function resolveConfig(
 
   const legacy = toList(raw.legacyCookies) ?? DEFAULT_LEGACY_COOKIES;
 
+  const language = oneOf<LanguageSetting>(
+    raw.language,
+    LANGUAGE_SETTINGS,
+    oneOf<LanguageSetting>(defaults.language, LANGUAGE_SETTINGS, 'th'),
+  );
+
   return {
     siteKey: matches(raw.siteKey, SITE_KEY_RE) ?? 'default',
     apiUrl: raw.apiUrl !== undefined ? safeHttpUrl(raw.apiUrl, scriptSrc) : apiDefault,
     policyUrl: safeHttpUrl(raw.policyUrl ?? defaults.policyUrl),
     policyVersion: matches(raw.policyVersion, VERSION_RE) ?? '1',
-    language: detectLanguage(raw.language),
+    language: language === 'auto' ? detectLanguage() : language,
     subjectId: matches(raw.subjectId, SUBJECT_ID_RE),
     categories: categories ?? [...OPTIONAL_CATEGORIES],
     acceptDays: toInt(raw.acceptDays, 365, 1, 395),
