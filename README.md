@@ -110,7 +110,7 @@ Inspect the stored records:
 docker compose exec mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d ConsentDB -Q "SELECT TOP 10 * FROM dbo.ConsentRecord ORDER BY Id DESC"
 ```
 
-Without Docker (Node ≥ 24.22.1, see `.nvmrc`):
+Without Docker (Node ≥ 24.22.3, see `.nvmrc`):
 
 ```bash
 npm ci && npm run build && npm test

@@ -17,7 +17,7 @@ docker images appointment
 ```bash
 docker run --rm appointment:1.6 --version
 ```
-This works because the image's entrypoint is already `/usr/local/bin/node`. Whatever you put after the image name goes to `node`, so this runs `node --version`. It should print `v24.22.1`.
+This works because the image's entrypoint is already `/usr/local/bin/node`. Whatever you put after the image name goes to `node`, so this runs `node --version`. It should print `v24.22.3`.
 
 If you'd rather name the binary yourself:
 ```bash

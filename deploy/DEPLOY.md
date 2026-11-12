@@ -2,7 +2,7 @@
 
 The bundle folder `consent-cookie-<version>/` contains:
 
-- `consent-cookie-<version>.tar.gz`: the Docker image (Node 24.22.1, linux/amd64)
+- `consent-cookie-<version>.tar.gz`: the Docker image (Node 24.22.3, linux/amd64)
 - `docker-compose.yml`: runs that image, no build or source needed
 - `.env.example`: every variable, for reference
 - `SHA256SUMS`: checksum of the image archive
