@@ -9,7 +9,7 @@
     "apps/server"
   ],
   "engines": {
-    "node": ">=24.22.1"
+    "node": ">=24.22.3"
   },
   "scripts": {
     "build": "npm run build -w @consent/widget && npm run build -w @consent/server",
